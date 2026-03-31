@@ -1,9 +1,18 @@
 import rawApps from '@/data/apps.json';
 import rawLogsMetrics from '@/data/logs-metrics.json';
-import { AppLogsMetrics, CloudApplication, HealthStatus, Provider, RollbackSimulation } from './types';
+import {
+  AppLogsMetrics,
+  CloudApplication,
+  DependencyHealthStatus,
+  HealthStatus,
+  Provider,
+  RollbackSimulation,
+  ServiceDependency,
+} from './types';
 
-const providers: Provider[] = ['AWS', 'GCP'];
+const providers: Provider[] = ['AWS', 'GCP', 'Internal'];
 const healthStatuses: HealthStatus[] = ['healthy', 'warning', 'critical'];
+const dependencyHealthStatuses: DependencyHealthStatus[] = ['Healthy', 'Degraded', 'Critical', 'Unknown'];
 
 const isObject = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null;
@@ -13,6 +22,9 @@ const isProvider = (value: unknown): value is Provider =>
 
 const isHealthStatus = (value: unknown): value is HealthStatus =>
   typeof value === 'string' && healthStatuses.includes(value as HealthStatus);
+
+const isDependencyHealthStatus = (value: unknown): value is DependencyHealthStatus =>
+  typeof value === 'string' && dependencyHealthStatuses.includes(value as DependencyHealthStatus);
 
 const isStringArray = (value: unknown): value is string[] =>
   Array.isArray(value) && value.every((entry) => typeof entry === 'string');
@@ -27,6 +39,20 @@ const isMetricsRecord = (value: unknown): value is RollbackSimulation['postRollb
     typeof value.latencyP95 === 'string' &&
     typeof value.failedRequests === 'number' &&
     typeof value.deploymentVersion === 'string'
+  );
+};
+
+const isDependencyRecord = (value: unknown): value is ServiceDependency => {
+  if (!isObject(value)) {
+    return false;
+  }
+
+  return (
+    typeof value.name === 'string' &&
+    isProvider(value.provider) &&
+    isDependencyHealthStatus(value.health) &&
+    typeof value.metadata === 'string' &&
+    (value.externalCaller === undefined || typeof value.externalCaller === 'boolean')
   );
 };
 
@@ -70,6 +96,8 @@ const isLogsMetricsRecord = (value: unknown): value is AppLogsMetrics => {
   return (
     typeof value.appId === 'string' &&
     isStringArray(value.logs) &&
+    Array.isArray(value.dependencies) &&
+    value.dependencies.every(isDependencyRecord) &&
     typeof value.aiInsights.summary === 'string' &&
     typeof value.aiInsights.likelyCause === 'string' &&
     typeof value.aiInsights.nextStep === 'string' &&

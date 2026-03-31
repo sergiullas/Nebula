@@ -1,6 +1,7 @@
-export type Provider = 'AWS' | 'GCP';
+export type Provider = 'AWS' | 'GCP' | 'Internal';
 
 export type HealthStatus = 'healthy' | 'warning' | 'critical';
+export type DependencyHealthStatus = 'Healthy' | 'Degraded' | 'Critical' | 'Unknown';
 
 export type CloudApplication = {
   id: string;
@@ -14,6 +15,14 @@ export type CloudApplication = {
   activeIncident: boolean;
   aiSummary?: string;
   recommendedAction?: string;
+};
+
+export type ServiceDependency = {
+  name: string;
+  provider: Provider;
+  health: DependencyHealthStatus;
+  metadata: string;
+  externalCaller?: boolean;
 };
 
 export type AppMetrics = {
@@ -43,4 +52,13 @@ export type AppLogsMetrics = {
   logs: string[];
   aiInsights: AppAiInsights;
   rollbackSimulation?: RollbackSimulation;
+  dependencies: ServiceDependency[];
+};
+
+export type ActionAuditEntry = {
+  action: string;
+  application: string;
+  environment: string;
+  actor: string;
+  timestamp: string;
 };

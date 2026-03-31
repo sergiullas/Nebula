@@ -17,6 +17,45 @@
       "likelyCause": "Timeout configuration change is the most likely trigger.",
       "nextStep": "Roll back or compare timeout settings against the last stable release."
     },
+    "dependencies": [
+      {
+        "name": "Payments DB",
+        "provider": "AWS",
+        "health": "Critical",
+        "metadata": "RDS PostgreSQL · us-east-1 · v14.9"
+      },
+      {
+        "name": "Auth Service",
+        "provider": "Internal",
+        "health": "Degraded",
+        "metadata": "Internal microservice · us-east-1 · v2.3.1"
+      },
+      {
+        "name": "Fraud Detection",
+        "provider": "Internal",
+        "health": "Healthy",
+        "metadata": "Internal microservice · us-east-1 · v1.8.0"
+      },
+      {
+        "name": "Notification Gateway",
+        "provider": "GCP",
+        "health": "Healthy",
+        "metadata": "Pub/Sub · us-central1 · managed"
+      },
+      {
+        "name": "Secrets Manager",
+        "provider": "AWS",
+        "health": "Healthy",
+        "metadata": "Secrets Manager · us-east-1 · managed"
+      },
+      {
+        "name": "Checkout UI",
+        "provider": "Internal",
+        "health": "Unknown",
+        "metadata": "External caller",
+        "externalCaller": true
+      }
+    ],
     "rollbackSimulation": {
       "postRollbackMetrics": {
         "errorRate": "3.8%",
@@ -45,6 +84,26 @@
       "summary": "Operational baseline remains stable in production.",
       "likelyCause": "No incident signal detected.",
       "nextStep": "Keep observing routine metrics and deployment trends."
-    }
+    },
+    "dependencies": [
+      {
+        "name": "BigQuery",
+        "provider": "GCP",
+        "health": "Healthy",
+        "metadata": "Analytics warehouse · us-central1 · managed"
+      },
+      {
+        "name": "Cloud Storage",
+        "provider": "GCP",
+        "health": "Healthy",
+        "metadata": "Object storage · us-central1 · managed"
+      },
+      {
+        "name": "Auth Service",
+        "provider": "Internal",
+        "health": "Healthy",
+        "metadata": "Internal microservice · us-east-1 · v2.3.1"
+      }
+    ]
   }
 ]

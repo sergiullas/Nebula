@@ -5,7 +5,8 @@ type ProviderBadgeProps = {
 };
 
 export function ProviderBadge({ provider }: ProviderBadgeProps) {
-  const className = provider === 'AWS' ? 'provider-aws' : 'provider-gcp';
+  const className =
+    provider === 'AWS' ? 'provider-aws' : provider === 'GCP' ? 'provider-gcp' : 'provider-internal';
 
   return <span className={`pill ${className}`}>{provider}</span>;
 }

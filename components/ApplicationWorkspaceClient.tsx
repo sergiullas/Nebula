@@ -1,9 +1,11 @@
 'use client';
 
-import { FormEvent, useMemo, useState } from 'react';
+import { FormEvent, useEffect, useMemo, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { ProviderBadge } from '@/components/ProviderBadge';
 import { HealthBadge } from '@/components/HealthBadge';
-import { ActionStatus, AppLogsMetrics, CloudApplication, HealthStatus } from '@/components/types';
+import { buildSharedActions } from '@/components/actions';
+import { ActionStatus, AppLogsMetrics, CloudApplication, DependencyHealthStatus, HealthStatus } from '@/components/types';
 
 type ApplicationWorkspaceClientProps = {
   application: CloudApplication;
@@ -11,12 +13,26 @@ type ApplicationWorkspaceClientProps = {
   currentEnvironment: string;
 };
 
+type WorkspaceTab = 'Overview' | 'Logs & metrics' | 'Deployments' | 'Services';
+
+type InlineAction = {
+  primary?: string;
+  secondary?: string;
+};
+
 const INCIDENT_PROMPTS = ['What changed?', 'What is likely broken?', 'What should I do next?'] as const;
+const tabs: WorkspaceTab[] = ['Overview', 'Logs & metrics', 'Deployments', 'Services'];
 
 const toTitleCase = (value: string) => value.charAt(0).toUpperCase() + value.slice(1);
 
-const formatAiResponse = (diagnosis: string, likelyCause: string, nextStep: string): string =>
-  `Diagnosis: ${diagnosis}\nLikely Cause: ${likelyCause}\nRecommended Next Step: ${nextStep}`;
+const dependencyClass: Record<DependencyHealthStatus, string> = {
+  Healthy: 'dep-healthy',
+  Degraded: 'dep-degraded',
+  Critical: 'dep-critical',
+  Unknown: 'dep-unknown',
+};
+
+const aiReply = (message: string, action?: InlineAction) => ({ message, action });
 
 const createAiResponse = (
   query: string,
@@ -25,52 +41,44 @@ const createAiResponse = (
   health: HealthStatus,
   deploymentVersion: string,
   didRunRollback: boolean,
-): string => {
+  unhealthyDependencies: string[],
+) => {
   const normalizedQuery = query.trim().toLowerCase();
 
   if (normalizedQuery === 'what changed?') {
     return didRunRollback
-      ? formatAiResponse(
-          `${application.name} in ${environment} is now running ${deploymentVersion} after rollback.`,
-          'The prior release likely introduced unstable timeout behavior.',
-          'Monitor for 15 minutes and confirm continued metric recovery.',
+      ? aiReply(
+          `${application.name} in ${environment} is now running ${deploymentVersion} after rollback. The prior release likely introduced unstable timeout behavior.`,
         )
-      : formatAiResponse(
-          `${application.name} in ${environment} degraded after deployment ${deploymentVersion}.`,
-          'Timeout-related configuration drift is the strongest signal.',
-          'Compare with the previous stable release or execute rollback.',
+      : aiReply(
+          `${application.name} in ${environment} degraded after deployment ${deploymentVersion}. Timeout-related configuration drift is the strongest signal.`,
+          { primary: 'Roll back deployment', secondary: 'Jump to logs & metrics' },
         );
   }
 
   if (normalizedQuery === 'what is likely broken?') {
+    const dependencySignal = unhealthyDependencies.length
+      ? `Unhealthy dependencies detected: ${unhealthyDependencies.join(', ')}.`
+      : 'No unhealthy dependencies are currently reported.';
+
     return didRunRollback
-      ? formatAiResponse(
-          `${application.name} in ${environment} is in ${health} and stabilizing.`,
-          'Residual retries may persist briefly after rollback.',
-          'Continue observation until failures return near baseline.',
-        )
-      : formatAiResponse(
-          `${application.name} in ${environment} is ${health} with elevated failures.`,
-          'Request timeout thresholds are likely too strict for current load.',
-          'Review timeout and dependency latency paths immediately.',
+      ? aiReply(`${application.name} in ${environment} is now ${health}. ${dependencySignal}`)
+      : aiReply(
+          `${application.name} in ${environment} is ${health} with elevated failures. ${dependencySignal} Both signals align with the v1.24 timeout configuration change.`,
+          { primary: 'Roll back deployment', secondary: 'Review config' },
         );
   }
 
   if (normalizedQuery === 'what should i do next?') {
     return didRunRollback
-      ? formatAiResponse(
-          `${application.name} in ${environment} shows positive post-rollback trend.`,
-          'The incident was likely tied to the reverted deployment.',
-          'Keep monitoring and capture the change diff for follow-up.',
-        )
-      : formatAiResponse(
-          `${application.name} in ${environment} needs immediate mitigation in ${health}.`,
-          'Current build behavior indicates configuration regression risk.',
-          'Run rollback to the previous stable version now.',
-        );
+      ? aiReply(`${application.name} shows positive post-rollback trend. Continue monitoring before incident closure.`)
+      : aiReply(`${application.name} needs immediate mitigation in ${health}.`, {
+          primary: 'Roll back deployment',
+          secondary: 'Switch environment',
+        });
   }
 
-  return 'I cannot answer that in this context. Try one of the suggested prompts.';
+  return aiReply('I cannot answer that in this context. Try one of the suggested prompts.');
 };
 
 export function ApplicationWorkspaceClient({
@@ -78,12 +86,17 @@ export function ApplicationWorkspaceClient({
   logsMetrics,
   currentEnvironment,
 }: ApplicationWorkspaceClientProps) {
+  const searchParams = useSearchParams();
   const [isCompanionOpen, setIsCompanionOpen] = useState(false);
   const [queryInput, setQueryInput] = useState('');
-  const [aiResponse, setAiResponse] = useState('Select a prompt or ask a supported question.');
+  const [aiResponse, setAiResponse] = useState(aiReply('Select a prompt or ask a supported question.'));
   const [actionStatus, setActionStatus] = useState<ActionStatus>('idle');
   const [didRunRollback, setDidRunRollback] = useState(false);
   const [actionFeedback, setActionFeedback] = useState('');
+  const [activeTab, setActiveTab] = useState<WorkspaceTab>('Overview');
+  const [servicesView, setServicesView] = useState<'list' | 'graph'>('list');
+  const [pendingAction, setPendingAction] = useState<string | null>(null);
+  const [auditTrail, setAuditTrail] = useState<string[]>([]);
 
   const activeMetrics = useMemo(() => {
     if (!logsMetrics) {
@@ -95,6 +108,13 @@ export function ApplicationWorkspaceClient({
       : logsMetrics.metrics;
   }, [didRunRollback, logsMetrics]);
 
+  const dependencies = useMemo(() => logsMetrics?.dependencies ?? [], [logsMetrics]);
+
+  const unhealthyDependencies = useMemo(
+    () => dependencies.filter((dependency) => dependency.health === 'Critical' || dependency.health === 'Degraded'),
+    [dependencies],
+  );
+
   const activeHealth = useMemo<HealthStatus>(() => {
     if (didRunRollback && logsMetrics?.rollbackSimulation) {
       return logsMetrics.rollbackSimulation.postRollbackHealth;
@@ -102,6 +122,12 @@ export function ApplicationWorkspaceClient({
 
     return application.health;
   }, [application.health, didRunRollback, logsMetrics]);
+
+  useEffect(() => {
+    if (searchParams.get('openAi') === 'true') {
+      setIsCompanionOpen(true);
+    }
+  }, [searchParams]);
 
   const submitQuery = (query: string) => {
     setAiResponse(
@@ -112,6 +138,7 @@ export function ApplicationWorkspaceClient({
         activeHealth,
         activeMetrics?.deploymentVersion ?? 'current deployment',
         didRunRollback,
+        unhealthyDependencies.map((dependency) => dependency.name),
       ),
     );
   };
@@ -121,27 +148,42 @@ export function ApplicationWorkspaceClient({
     submitQuery(queryInput);
   };
 
-  const handleRollback = () => {
-    if (!logsMetrics?.rollbackSimulation || actionStatus === 'running' || didRunRollback) {
+  const executeAction = (label: string) => {
+    setPendingAction(label);
+  };
+
+  const confirmAction = () => {
+    if (!pendingAction) {
       return;
     }
 
-    setActionStatus('running');
-    setActionFeedback('Simulating rollback...');
+    setAuditTrail((current) => [
+      `${pendingAction} · ${application.name} · ${currentEnvironment} · Devin · ${new Date().toISOString()}`,
+      ...current,
+    ]);
 
-    window.setTimeout(() => {
-      setDidRunRollback(true);
-      setActionStatus('completed');
-      setActionFeedback(logsMetrics.rollbackSimulation?.aiConfirmation ?? 'Rollback simulated successfully.');
-      setAiResponse(
-        formatAiResponse(
-          `${application.name} in ${currentEnvironment} moved to ${logsMetrics.rollbackSimulation?.postRollbackMetrics.deploymentVersion ?? 'stable build'}.`,
-          'The previous deployment likely caused timeout regression.',
-          'Continue monitoring before closing the incident.',
-        ),
-      );
-    }, 1500);
+    if (pendingAction === 'Roll back deployment' && logsMetrics?.rollbackSimulation && !didRunRollback) {
+      setActionStatus('running');
+      setActionFeedback('Simulating rollback...');
+      window.setTimeout(() => {
+        setDidRunRollback(true);
+        setActionStatus('completed');
+        setActionFeedback(logsMetrics.rollbackSimulation?.aiConfirmation ?? 'Rollback simulated successfully.');
+      }, 1500);
+    }
+
+    if (pendingAction === 'Jump to logs & metrics') {
+      setActiveTab('Logs & metrics');
+    }
+
+    if (pendingAction === 'Open AI companion') {
+      setIsCompanionOpen(true);
+    }
+
+    setPendingAction(null);
   };
+
+  const sharedActions = useMemo(() => buildSharedActions(application), [application]);
 
   return (
     <section className={`workspace-layout ${isCompanionOpen ? 'drawer-open' : 'drawer-closed'}`}>
@@ -175,10 +217,10 @@ export function ApplicationWorkspaceClient({
               <button
                 type="button"
                 className="incident-button"
-                onClick={handleRollback}
+                onClick={() => executeAction('Roll back deployment')}
                 disabled={!logsMetrics?.rollbackSimulation || actionStatus === 'running' || didRunRollback}
               >
-                {actionStatus === 'running' ? 'Rolling back...' : 'Roll back to v1.23'}
+                {actionStatus === 'running' ? 'Rolling back...' : 'Roll back deployment'}
               </button>
               <button type="button" className="incident-button secondary">
                 Review config
@@ -193,10 +235,16 @@ export function ApplicationWorkspaceClient({
         )}
 
         <nav className="workspace-tabs" aria-label="Workspace sections">
-          <span className="tab-pill active">Overview</span>
-          <span className="tab-pill">Logs &amp; metrics</span>
-          <span className="tab-pill">Deployments</span>
-          <span className="tab-pill">Services</span>
+          {tabs.map((tab) => (
+            <button
+              type="button"
+              key={tab}
+              className={`tab-pill ${activeTab === tab ? 'active' : ''}`}
+              onClick={() => setActiveTab(tab)}
+            >
+              {tab === 'Services' && unhealthyDependencies.length > 0 ? `${tab} (${unhealthyDependencies.length})` : tab}
+            </button>
+          ))}
         </nav>
 
         {logsMetrics && activeMetrics && (
@@ -224,27 +272,103 @@ export function ApplicationWorkspaceClient({
           </section>
         )}
 
-        <p className="overview-title">APPLICATION OVERVIEW</p>
+        {activeTab === 'Overview' && (
+          <>
+            <p className="overview-title">APPLICATION OVERVIEW</p>
+            <section className="section-grid">
+              <article className="section-card">
+                <h2 className="section-title">Environments</h2>
+                <p className="placeholder">{application.environments.join(' · ')}</p>
+                <p className="placeholder">Provider-aware defaults active for {application.provider}</p>
+              </article>
 
-        <section className="section-grid">
-          <article className="section-card">
-            <h2 className="section-title">Environments</h2>
-            <p className="placeholder">{application.environments.join(' · ')}</p>
-            <p className="placeholder">All environments healthy</p>
-          </article>
+              <article className="section-card">
+                <h2 className="section-title">Deployments</h2>
+                <p className="placeholder muted">Deployment history coming soon</p>
+              </article>
 
-          <article className="section-card">
-            <h2 className="section-title">Deployments</h2>
-            <p className="placeholder muted">Deployment history coming soon</p>
-          </article>
+              <article className="section-card">
+                <h2 className="section-title">Shared actions</h2>
+                <p className="placeholder">{sharedActions.map((action) => action.label).join(' · ')}</p>
+              </article>
+            </section>
+          </>
+        )}
 
-          <article className="section-card">
-            <h2 className="section-title">Services</h2>
-            <p className="placeholder muted">Service dependency map coming soon</p>
-          </article>
-        </section>
+        {activeTab === 'Logs & metrics' && (
+          <section className="section-grid single-column">
+            <article className="section-card">
+              <h2 className="section-title">Recent Logs</h2>
+              {logsMetrics?.logs.map((log) => (
+                <p key={log} className="placeholder">
+                  {log}
+                </p>
+              ))}
+            </article>
+          </section>
+        )}
+
+        {activeTab === 'Deployments' && (
+          <section className="section-grid single-column">
+            <article className="section-card">
+              <h2 className="section-title">Deployment actions</h2>
+              <p className="placeholder">Trigger deployment and rollback run through shared confirmation.</p>
+            </article>
+          </section>
+        )}
+
+        {activeTab === 'Services' && (
+          <section className="services-block">
+            <div className="services-header-row">
+              <h2 className="section-title">Service dependencies</h2>
+              <div className="toggle-row">
+                <button
+                  type="button"
+                  className={`incident-button secondary ${servicesView === 'list' ? 'toggle-active' : ''}`}
+                  onClick={() => setServicesView('list')}
+                >
+                  List
+                </button>
+                <button
+                  type="button"
+                  className={`incident-button secondary ${servicesView === 'graph' ? 'toggle-active' : ''}`}
+                  onClick={() => setServicesView('graph')}
+                >
+                  Graph
+                </button>
+              </div>
+            </div>
+            {servicesView === 'list' ? (
+              <div className="dependency-list">
+                {dependencies.map((dependency) => (
+                  <article key={dependency.name} className="dependency-row">
+                    <div>
+                      <p className="dependency-name">{dependency.name}</p>
+                      <p className="dependency-meta">{dependency.metadata}</p>
+                    </div>
+                    <div className="pill-row">
+                      <ProviderBadge provider={dependency.provider} />
+                      <span className={`pill ${dependencyClass[dependency.health]}`}>{dependency.health}</span>
+                    </div>
+                  </article>
+                ))}
+              </div>
+            ) : (
+              <div className="graph-panel" aria-label="Service dependency graph">
+                <div className="graph-node center-node">{application.name}</div>
+                {dependencies.map((dependency) => (
+                  <div key={dependency.name} className={`graph-node ${dependency.externalCaller ? 'dashed' : ''}`}>
+                    <span>{dependency.name}</span>
+                    <span className={`graph-edge ${dependencyClass[dependency.health]}`} />
+                  </div>
+                ))}
+              </div>
+            )}
+          </section>
+        )}
 
         {actionFeedback && <p className="action-feedback">{actionFeedback}</p>}
+        {auditTrail.length > 0 && <p className="action-feedback">Audit: {auditTrail[0]}</p>}
       </div>
 
       <aside className={`ai-drawer ${isCompanionOpen ? 'open' : 'closed'}`} aria-label="AI companion drawer">
@@ -261,7 +385,7 @@ export function ApplicationWorkspaceClient({
         <div id="ai-drawer-content" className="ai-drawer-content">
           <h3 className="ai-drawer-title">AI Assistant</h3>
           <p className="ai-context-line">
-            {application.name} · {toTitleCase(currentEnvironment)}
+            {application.name} · {toTitleCase(currentEnvironment)} · {application.provider}
           </p>
 
           <div className="ai-prompt-list" aria-label="Suggested prompts">
@@ -273,7 +397,19 @@ export function ApplicationWorkspaceClient({
           </div>
 
           <div className="ai-response-area" aria-live="polite">
-            {aiResponse}
+            <p>{aiResponse.message}</p>
+            {aiResponse.action?.primary && (
+              <div className="ai-action-row">
+                <button type="button" className="incident-button" onClick={() => executeAction(aiResponse.action?.primary ?? '')}>
+                  {aiResponse.action.primary}
+                </button>
+                {aiResponse.action.secondary && (
+                  <button type="button" className="incident-button secondary">
+                    {aiResponse.action.secondary}
+                  </button>
+                )}
+              </div>
+            )}
           </div>
 
           <form className="ai-input-row" onSubmit={handleCompanionSubmit}>
@@ -290,6 +426,32 @@ export function ApplicationWorkspaceClient({
           </form>
         </div>
       </aside>
+
+      {pendingAction && (
+        <section className="confirm-overlay" role="dialog" aria-label="Confirm action">
+          <div className="confirm-modal">
+            <h2>Confirm action</h2>
+            <p>{pendingAction} will run for this workspace context.</p>
+            <p>
+              <strong>Application:</strong> {application.name}
+            </p>
+            <p>
+              <strong>Environment:</strong> {currentEnvironment}
+            </p>
+            <p>
+              <strong>Actor:</strong> Devin
+            </p>
+            <div className="confirm-actions">
+              <button type="button" className="incident-button" onClick={confirmAction}>
+                Confirm
+              </button>
+              <button type="button" className="incident-button secondary" onClick={() => setPendingAction(null)}>
+                Cancel
+              </button>
+            </div>
+          </div>
+        </section>
+      )}
     </section>
   );
 }
