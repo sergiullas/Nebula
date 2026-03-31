@@ -29,9 +29,18 @@ export type AppAiInsights = {
   nextStep: string;
 };
 
+export type ActionStatus = 'idle' | 'running' | 'completed';
+
+export type RollbackSimulation = {
+  postRollbackMetrics: AppMetrics;
+  postRollbackHealth: HealthStatus;
+  aiConfirmation: string;
+};
+
 export type AppLogsMetrics = {
   appId: string;
   metrics: AppMetrics;
   logs: string[];
   aiInsights: AppAiInsights;
+  rollbackSimulation?: RollbackSimulation;
 };

@@ -16,6 +16,16 @@
       "summary": "Production instability started shortly after deployment v1.24.",
       "likelyCause": "Timeout configuration change is the most likely trigger.",
       "nextStep": "Roll back or compare timeout settings against the last stable release."
+    },
+    "rollbackSimulation": {
+      "postRollbackMetrics": {
+        "errorRate": "3.8%",
+        "latencyP95": "610ms",
+        "failedRequests": 79,
+        "deploymentVersion": "v1.23"
+      },
+      "postRollbackHealth": "warning",
+      "aiConfirmation": "Rollback completed successfully. Error rate trending down. Monitor for 15 minutes."
     }
   },
   {

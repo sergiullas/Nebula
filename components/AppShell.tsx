@@ -8,7 +8,7 @@ type AppShellProps = {
 
 const navItems = [
   { href: '/', label: 'My Applications' },
-  { href: '/catalog', label: 'Catalog' }
+  { href: '/catalog', label: 'Catalog' },
 ];
 
 export function AppShell({ children, currentPath }: AppShellProps) {
@@ -28,12 +28,9 @@ export function AppShell({ children, currentPath }: AppShellProps) {
           ))}
         </nav>
       </aside>
-      <div className="main-panel">
-        <header className="topbar">
-          <div className="topbar-title">Developer Workspace</div>
-          <div className="topbar-user">Signed in as Devin (mock)</div>
-        </header>
-        <main className="content">{children}</main>
+
+      <div className="screen-shell">
+        <main className="screen-content">{children}</main>
       </div>
     </div>
   );

@@ -1,6 +1,6 @@
 import rawApps from '@/data/apps.json';
 import rawLogsMetrics from '@/data/logs-metrics.json';
-import { AppLogsMetrics, CloudApplication, HealthStatus, Provider } from './types';
+import { AppLogsMetrics, CloudApplication, HealthStatus, Provider, RollbackSimulation } from './types';
 
 const providers: Provider[] = ['AWS', 'GCP'];
 const healthStatuses: HealthStatus[] = ['healthy', 'warning', 'critical'];
@@ -16,6 +16,31 @@ const isHealthStatus = (value: unknown): value is HealthStatus =>
 
 const isStringArray = (value: unknown): value is string[] =>
   Array.isArray(value) && value.every((entry) => typeof entry === 'string');
+
+const isMetricsRecord = (value: unknown): value is RollbackSimulation['postRollbackMetrics'] => {
+  if (!isObject(value)) {
+    return false;
+  }
+
+  return (
+    typeof value.errorRate === 'string' &&
+    typeof value.latencyP95 === 'string' &&
+    typeof value.failedRequests === 'number' &&
+    typeof value.deploymentVersion === 'string'
+  );
+};
+
+const isRollbackSimulation = (value: unknown): value is RollbackSimulation => {
+  if (!isObject(value)) {
+    return false;
+  }
+
+  return (
+    isMetricsRecord(value.postRollbackMetrics) &&
+    isHealthStatus(value.postRollbackHealth) &&
+    typeof value.aiConfirmation === 'string'
+  );
+};
 
 const isCloudApplication = (value: unknown): value is CloudApplication => {
   if (!isObject(value)) {
@@ -38,20 +63,17 @@ const isCloudApplication = (value: unknown): value is CloudApplication => {
 };
 
 const isLogsMetricsRecord = (value: unknown): value is AppLogsMetrics => {
-  if (!isObject(value) || !isObject(value.metrics) || !isObject(value.aiInsights)) {
+  if (!isObject(value) || !isMetricsRecord(value.metrics) || !isObject(value.aiInsights)) {
     return false;
   }
 
   return (
     typeof value.appId === 'string' &&
-    typeof value.metrics.errorRate === 'string' &&
-    typeof value.metrics.latencyP95 === 'string' &&
-    typeof value.metrics.failedRequests === 'number' &&
-    typeof value.metrics.deploymentVersion === 'string' &&
     isStringArray(value.logs) &&
     typeof value.aiInsights.summary === 'string' &&
     typeof value.aiInsights.likelyCause === 'string' &&
-    typeof value.aiInsights.nextStep === 'string'
+    typeof value.aiInsights.nextStep === 'string' &&
+    (value.rollbackSimulation === undefined || isRollbackSimulation(value.rollbackSimulation))
   );
 };
 
