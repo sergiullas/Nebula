@@ -5,6 +5,7 @@ import { ReactNode, useEffect, useMemo, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { mockApplications } from './data';
 import { buildSharedActions } from './actions';
+import { Badge } from './Badge';
 
 type AppShellProps = {
   children: ReactNode;
@@ -170,7 +171,7 @@ export function AppShell({ children, currentPath }: AppShellProps) {
         <section className="palette-overlay" role="dialog" aria-label="Command palette">
           <div className="palette-panel">
             <div className="palette-input-row">
-              <span className="pill env-pill">{activeApp?.name ?? 'My Applications'}</span>
+              <Badge variant="env">{activeApp?.name ?? 'My Applications'}</Badge>
               <input
                 autoFocus
                 value={query}

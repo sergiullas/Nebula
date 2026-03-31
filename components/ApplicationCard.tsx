@@ -1,28 +1,30 @@
 import Link from 'next/link';
 import { CloudApplication } from './types';
-import { ProviderBadge } from './ProviderBadge';
-import { HealthBadge } from './HealthBadge';
+import { Badge } from './Badge';
 
 type ApplicationCardProps = {
   app: CloudApplication;
 };
 
 export function ApplicationCard({ app }: ApplicationCardProps) {
+  const providerVariant = app.provider === 'AWS' ? 'aws' : app.provider === 'GCP' ? 'gcp' : 'unknown';
+  const healthVariant = app.health === 'healthy' ? 'healthy' : app.health === 'critical' ? 'critical' : 'degraded';
+
   return (
     <Link className="app-card" href={`/app/${app.id}`}>
-      <div className="meta">
+      <div className="app-card__breadcrumb">
         {app.organization} / {app.project}
       </div>
-      <h2 className="app-name">{app.name}</h2>
-      <div className="pill-row">
-        <ProviderBadge provider={app.provider} />
-        <HealthBadge health={app.health} />
-        {app.activeIncident && <span className="pill incident-pill">Incident Active</span>}
+      <h2 className="app-card__name">{app.name}</h2>
+      <div className="app-card__badges">
+        <Badge variant={providerVariant}>{app.provider}</Badge>
+        <Badge variant={healthVariant}>{app.health === 'warning' ? 'Degraded' : app.health === 'healthy' ? 'Healthy' : 'Critical'}</Badge>
+        {app.activeIncident && <Badge variant="incident">Incident Active</Badge>}
       </div>
-      <div className="meta">Last deployment: {app.lastDeployment}</div>
+      <div className="app-card__deployment">Last deployment: {app.lastDeployment}</div>
       {app.activeIncident && app.aiSummary && (
-        <p className="ai-inline">
-          <span>AI:</span> {app.aiSummary}
+        <p className="app-card__insight">
+          <span className="app-card__insight-prefix">AI:</span> {app.aiSummary}
         </p>
       )}
     </Link>
