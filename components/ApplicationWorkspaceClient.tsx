@@ -31,42 +31,42 @@ const createAiResponse = (
   if (normalizedQuery === 'what changed?') {
     return didRunRollback
       ? formatAiResponse(
-          `${application.name} in ${environment} is now on ${deploymentVersion} after rollback.`,
-          'A recent deployment introduced instability before rollback.',
-          'Monitor error rate and latency for 15 minutes before closing the incident.',
+          `${application.name} in ${environment} is now running ${deploymentVersion} after rollback.`,
+          'The prior release likely introduced unstable timeout behavior.',
+          'Monitor for 15 minutes and confirm continued metric recovery.',
         )
       : formatAiResponse(
           `${application.name} in ${environment} degraded after deployment ${deploymentVersion}.`,
-          'Timeout-related configuration changes are likely affecting request completion.',
-          'Compare timeout settings with the last stable release or roll back safely.',
+          'Timeout-related configuration drift is the strongest signal.',
+          'Compare with the previous stable release or execute rollback.',
         );
   }
 
   if (normalizedQuery === 'what is likely broken?') {
     return didRunRollback
       ? formatAiResponse(
-          `${application.name} in ${environment} is improving with health ${health}.`,
-          'Residual impact from the prior deployment may still be clearing.',
-          'Keep monitoring until failed requests settle near baseline.',
+          `${application.name} in ${environment} is in ${health} and stabilizing.`,
+          'Residual retries may persist briefly after rollback.',
+          'Continue observation until failures return near baseline.',
         )
       : formatAiResponse(
-          `${application.name} in ${environment} is in ${health} state with elevated failures.`,
-          'Request timeouts are likely causing retries and failed transactions.',
-          'Validate timeout thresholds and dependency response times immediately.',
+          `${application.name} in ${environment} is ${health} with elevated failures.`,
+          'Request timeout thresholds are likely too strict for current load.',
+          'Review timeout and dependency latency paths immediately.',
         );
   }
 
   if (normalizedQuery === 'what should i do next?') {
     return didRunRollback
       ? formatAiResponse(
-          `${application.name} in ${environment} shows recovery signals after rollback.`,
-          'The unstable deployment was likely the main incident trigger.',
-          'Continue observation, then document findings and close with a post-incident note.',
+          `${application.name} in ${environment} shows positive post-rollback trend.`,
+          'The incident was likely tied to the reverted deployment.',
+          'Keep monitoring and capture the change diff for follow-up.',
         )
       : formatAiResponse(
-          `${application.name} in ${environment} needs immediate mitigation in ${health} state.`,
-          'Current deployment behavior suggests a configuration regression.',
-          'Run rollback to the previous stable version and re-check metrics.',
+          `${application.name} in ${environment} needs immediate mitigation in ${health}.`,
+          'Current build behavior indicates configuration regression risk.',
+          'Run rollback to the previous stable version now.',
         );
   }
 
@@ -90,11 +90,9 @@ export function ApplicationWorkspaceClient({
       return undefined;
     }
 
-    if (didRunRollback && logsMetrics.rollbackSimulation) {
-      return logsMetrics.rollbackSimulation.postRollbackMetrics;
-    }
-
-    return logsMetrics.metrics;
+    return didRunRollback && logsMetrics.rollbackSimulation
+      ? logsMetrics.rollbackSimulation.postRollbackMetrics
+      : logsMetrics.metrics;
   }, [didRunRollback, logsMetrics]);
 
   const activeHealth = useMemo<HealthStatus>(() => {
@@ -138,8 +136,8 @@ export function ApplicationWorkspaceClient({
       setAiResponse(
         formatAiResponse(
           `${application.name} in ${currentEnvironment} moved to ${logsMetrics.rollbackSimulation?.postRollbackMetrics.deploymentVersion ?? 'stable build'}.`,
-          'The previous release likely introduced timeout regression.',
-          'Monitor for 15 minutes and confirm error trend remains downward.',
+          'The previous deployment likely caused timeout regression.',
+          'Continue monitoring before closing the incident.',
         ),
       );
     }, 1500);
@@ -147,124 +145,106 @@ export function ApplicationWorkspaceClient({
 
   return (
     <section className={`workspace-layout ${isCompanionOpen ? 'drawer-open' : 'drawer-closed'}`}>
-      <div className="workspace-main">
-        <section className="workspace-header">
-          <h1 className="page-title">{application.name}</h1>
-          <p className="meta">
-            {application.organization} / {application.project}
-          </p>
-          <div className="pill-row">
-            <ProviderBadge provider={application.provider} />
-            <HealthBadge health={activeHealth} />
-            <span className="pill env-pill">Environment: {currentEnvironment}</span>
-          </div>
-          <p className="meta health-summary">Current health: {activeHealth} in {currentEnvironment}.</p>
-          {application.activeIncident && application.aiSummary && (
-            <div className="ai-summary-block">
-              <strong>AI Incident Summary</strong>
-              <p>{application.aiSummary}</p>
+      <div className="workspace-frame">
+        <header className="workspace-head">
+          <div>
+            <p className="workspace-path">
+              {application.organization} / {application.project}
+            </p>
+            <h1 className="workspace-title">{application.name}</h1>
+            <div className="pill-row">
+              <ProviderBadge provider={application.provider} />
+              <span className="pill env-pill">{currentEnvironment}</span>
+              <HealthBadge health={activeHealth} />
             </div>
-          )}
-        </section>
+          </div>
+          <p className="workspace-user">Signed in as Devin</p>
+        </header>
 
-        <section className="workspace-tabs" aria-label="Workspace sections">
+        {application.activeIncident ? (
+          <section className="incident-banner">
+            <div>
+              <p className="incident-kicker">ACTIVE INCIDENT</p>
+              <p className="incident-title">
+                {toTitleCase(activeHealth)} in {currentEnvironment} · Error rate {activeMetrics?.errorRate ?? 'n/a'} ·{' '}
+                {activeMetrics?.deploymentVersion ?? 'unknown deployment'}
+              </p>
+              <p className="incident-body">AI: Timeout config change is the most likely cause.</p>
+            </div>
+            <div className="incident-actions">
+              <button
+                type="button"
+                className="incident-button"
+                onClick={handleRollback}
+                disabled={!logsMetrics?.rollbackSimulation || actionStatus === 'running' || didRunRollback}
+              >
+                {actionStatus === 'running' ? 'Rolling back...' : 'Roll back to v1.23'}
+              </button>
+              <button type="button" className="incident-button secondary">
+                Review config
+              </button>
+            </div>
+          </section>
+        ) : (
+          <section className="status-banner">
+            <span className="status-dot" /> All environments healthy · Last deployment {application.lastDeployment} · No active
+            incidents
+          </section>
+        )}
+
+        <nav className="workspace-tabs" aria-label="Workspace sections">
           <span className="tab-pill active">Overview</span>
-          <span className="tab-pill">Logs &amp; Metrics</span>
+          <span className="tab-pill">Logs &amp; metrics</span>
           <span className="tab-pill">Deployments</span>
           <span className="tab-pill">Services</span>
-        </section>
+        </nav>
+
+        {logsMetrics && activeMetrics && (
+          <section className="metrics-grid">
+            <article className="metric-card">
+              <p className="metric-label">ERROR RATE</p>
+              <p className="metric-value">{activeMetrics.errorRate}</p>
+              <p className="metric-subtext">{activeHealth === 'critical' ? 'Critical' : 'Normal'}</p>
+            </article>
+            <article className="metric-card">
+              <p className="metric-label">LATENCY P95</p>
+              <p className="metric-value">{activeMetrics.latencyP95}</p>
+              <p className="metric-subtext">{activeHealth === 'critical' ? 'Elevated' : 'Normal'}</p>
+            </article>
+            <article className="metric-card">
+              <p className="metric-label">FAILED REQUESTS</p>
+              <p className="metric-value">{activeMetrics.failedRequests}</p>
+              <p className="metric-subtext">Last hour</p>
+            </article>
+            <article className="metric-card">
+              <p className="metric-label">DEPLOYMENT</p>
+              <p className="metric-value">{activeMetrics.deploymentVersion}</p>
+              <p className="metric-subtext">{application.lastDeployment}</p>
+            </article>
+          </section>
+        )}
+
+        <p className="overview-title">APPLICATION OVERVIEW</p>
 
         <section className="section-grid">
           <article className="section-card">
-            <h2 className="section-title">Overview</h2>
-            <p className="placeholder">Environments: {application.environments.join(', ')}</p>
-            <p className="placeholder">Last deployment: {application.lastDeployment}</p>
+            <h2 className="section-title">Environments</h2>
+            <p className="placeholder">{application.environments.join(' · ')}</p>
+            <p className="placeholder">All environments healthy</p>
           </article>
 
           <article className="section-card">
             <h2 className="section-title">Deployments</h2>
-            <p className="placeholder">Deployment history module coming soon.</p>
+            <p className="placeholder muted">Deployment history coming soon</p>
           </article>
 
           <article className="section-card">
             <h2 className="section-title">Services</h2>
-            <p className="placeholder">Service dependency map coming soon.</p>
+            <p className="placeholder muted">Service dependency map coming soon</p>
           </article>
         </section>
 
-        <section className="logs-metrics-section">
-          <h2 className="section-title">Logs &amp; Metrics</h2>
-          {logsMetrics && activeMetrics ? (
-            <>
-              <div className="metrics-grid">
-                <article className="metric-card">
-                  <p className="metric-label">Error rate</p>
-                  <p className="metric-value">{activeMetrics.errorRate}</p>
-                </article>
-                <article className="metric-card">
-                  <p className="metric-label">Latency P95</p>
-                  <p className="metric-value">{activeMetrics.latencyP95}</p>
-                </article>
-                <article className="metric-card">
-                  <p className="metric-label">Failed requests</p>
-                  <p className="metric-value">{activeMetrics.failedRequests}</p>
-                </article>
-                <article className="metric-card">
-                  <p className="metric-label">Deployment version</p>
-                  <p className="metric-value">{activeMetrics.deploymentVersion}</p>
-                </article>
-              </div>
-
-              <article className="section-card logs-card">
-                <h3 className="section-title">Recent logs</h3>
-                <ul className="logs-list">
-                  {logsMetrics.logs.map((logLine) => (
-                    <li key={logLine}>{logLine}</li>
-                  ))}
-                </ul>
-              </article>
-
-              <article className="section-card ai-interpretation">
-                <h3 className="section-title">AI Interpretation</h3>
-                <p className="placeholder">
-                  <strong>Summary:</strong> {logsMetrics.aiInsights.summary}
-                </p>
-                <p className="placeholder">
-                  <strong>Likely cause:</strong> {logsMetrics.aiInsights.likelyCause}
-                </p>
-                <p className="placeholder">
-                  <strong>Recommended next step:</strong> {logsMetrics.aiInsights.nextStep}
-                </p>
-              </article>
-            </>
-          ) : (
-            <article className="section-card">
-              <p className="placeholder">Logs and metrics are unavailable for this application.</p>
-            </article>
-          )}
-        </section>
-
-        {application.activeIncident && (
-          <section className="section-card action-panel">
-            <h2 className="section-title">Recommended Actions</h2>
-            <p className="placeholder">Prototype actions to move from insight to next step.</p>
-            <div className="action-row">
-              <button type="button" className="action-button">
-                Review timeout configuration
-              </button>
-              <button
-                type="button"
-                className="action-button secondary"
-                onClick={handleRollback}
-                disabled={!logsMetrics?.rollbackSimulation || actionStatus === 'running' || didRunRollback}
-              >
-                {actionStatus === 'running' ? 'Rolling back...' : 'Roll back to previous stable version'}
-              </button>
-            </div>
-            {application.recommendedAction && <p className="placeholder">AI guidance: {application.recommendedAction}</p>}
-            {actionFeedback && <p className="action-feedback">{actionFeedback}</p>}
-          </section>
-        )}
+        {actionFeedback && <p className="action-feedback">{actionFeedback}</p>}
       </div>
 
       <aside className={`ai-drawer ${isCompanionOpen ? 'open' : 'closed'}`} aria-label="AI companion drawer">
@@ -281,7 +261,7 @@ export function ApplicationWorkspaceClient({
         <div id="ai-drawer-content" className="ai-drawer-content">
           <h3 className="ai-drawer-title">AI Assistant</h3>
           <p className="ai-context-line">
-            {application.name} · {toTitleCase(currentEnvironment)} · {toTitleCase(activeHealth)}
+            {application.name} · {toTitleCase(currentEnvironment)}
           </p>
 
           <div className="ai-prompt-list" aria-label="Suggested prompts">
