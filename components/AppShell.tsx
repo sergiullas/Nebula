@@ -2,6 +2,7 @@ import { ReactNode } from 'react';
 
 type AppShellProps = {
   children: ReactNode;
+  currentPath?: string;
 };
 
 export function AppShell({ children }: AppShellProps) {
