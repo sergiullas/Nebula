@@ -6,7 +6,7 @@ type HealthBadgeProps = {
 
 const healthLabel: Record<HealthStatus, string> = {
   healthy: 'Healthy',
-  warning: 'Warning',
+  warning: 'Degraded',
   critical: 'Critical'
 };
 

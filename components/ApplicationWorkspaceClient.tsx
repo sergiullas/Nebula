@@ -242,7 +242,14 @@ export function ApplicationWorkspaceClient({
               className={`tab-pill ${activeTab === tab ? 'active' : ''}`}
               onClick={() => setActiveTab(tab)}
             >
-              {tab === 'Services' && unhealthyDependencies.length > 0 ? `${tab} (${unhealthyDependencies.length})` : tab}
+              {tab === 'Services' && unhealthyDependencies.length > 0 ? (
+                <>
+                  {tab}
+                  <span className="tab-count-pill">{unhealthyDependencies.length}</span>
+                </>
+              ) : (
+                tab
+              )}
             </button>
           ))}
         </nav>
@@ -251,12 +258,12 @@ export function ApplicationWorkspaceClient({
           <section className="metrics-grid">
             <article className="metric-card">
               <p className="metric-label">ERROR RATE</p>
-              <p className="metric-value">{activeMetrics.errorRate}</p>
+              <p className={`metric-value ${activeHealth === 'critical' ? 'metric-critical' : ''}`}>{activeMetrics.errorRate}</p>
               <p className="metric-subtext">{activeHealth === 'critical' ? 'Critical' : 'Normal'}</p>
             </article>
             <article className="metric-card">
               <p className="metric-label">LATENCY P95</p>
-              <p className="metric-value">{activeMetrics.latencyP95}</p>
+              <p className={`metric-value ${activeHealth === 'critical' ? 'metric-critical' : ''}`}>{activeMetrics.latencyP95}</p>
               <p className="metric-subtext">{activeHealth === 'critical' ? 'Elevated' : 'Normal'}</p>
             </article>
             <article className="metric-card">
@@ -342,7 +349,8 @@ export function ApplicationWorkspaceClient({
               <div className="dependency-list">
                 {dependencies.map((dependency) => (
                   <article key={dependency.name} className="dependency-row">
-                    <div>
+                    <span className={`dep-status-dot ${dependencyClass[dependency.health]}`} />
+                    <div className="dependency-main">
                       <p className="dependency-name">{dependency.name}</p>
                       <p className="dependency-meta">{dependency.metadata}</p>
                     </div>
@@ -383,10 +391,15 @@ export function ApplicationWorkspaceClient({
         </button>
 
         <div id="ai-drawer-content" className="ai-drawer-content">
-          <h3 className="ai-drawer-title">AI Assistant</h3>
-          <p className="ai-context-line">
-            {application.name} · {toTitleCase(currentEnvironment)} · {application.provider}
-          </p>
+          <div className="ai-drawer-head">
+            <div>
+              <h3 className="ai-drawer-title">AI companion</h3>
+              <p className="ai-context-line">Scoped to {application.name}</p>
+            </div>
+            <button type="button" className="ai-close-button" onClick={() => setIsCompanionOpen(false)} aria-label="Close AI companion">
+              ✕
+            </button>
+          </div>
 
           <div className="ai-prompt-list" aria-label="Suggested prompts">
             {INCIDENT_PROMPTS.map((query) => (
