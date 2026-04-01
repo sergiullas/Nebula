@@ -1,0 +1,287 @@
+{
+  "AWS": [
+    {
+      "id": "amazon-rds",
+      "name": "Amazon RDS",
+      "provider": "AWS",
+      "category": "Database",
+      "description": "Managed relational database. PostgreSQL and MySQL supported. Multi-AZ available.",
+      "fit": {
+        "signal": "recommended",
+        "label": "Recommended for this application",
+        "appContext": "Payments API uses PostgreSQL-compatible queries and requires transactional integrity for payment processing.",
+        "basis": "Based on current application pattern: API + relational data"
+      },
+      "governance": "approved",
+      "cost": "$$",
+      "costLabel": "Moderate",
+      "costEstimate": "~$67/mo based on selected configuration",
+      "detail": {
+        "bestFor": "Transactional workloads requiring ACID compliance, relational data models, and structured queries.",
+        "avoidIf": "You need schema-less storage or require sub-millisecond key-value access.",
+        "governanceExplanation": "Pre-approved for all ACME applications. No additional review required.",
+        "impactNotes": [
+          "Standard for transactional workloads in ACME",
+          "Automated backups and multi-AZ supported",
+          "Integrates with existing VPC configuration"
+        ],
+        "usedInApps": 4
+      }
+    },
+    {
+      "id": "dynamodb",
+      "name": "DynamoDB",
+      "provider": "AWS",
+      "category": "NoSQL Database",
+      "description": "Serverless NoSQL. Unlimited scale. Pay per request or provisioned capacity.",
+      "fit": {
+        "signal": "alternative",
+        "label": "Alternative available",
+        "appContext": "DynamoDB can handle session state or catalog data, but Payments API's relational queries are better served by RDS.",
+        "basis": "Based on workload type: Payments API uses structured relational queries rather than key-value patterns"
+      },
+      "governance": "approved",
+      "cost": "$$",
+      "costLabel": "Moderate",
+      "costEstimate": "~$40/mo at current request volume",
+      "detail": {
+        "bestFor": "Applications needing flexible schemas, massive scale, or event-driven access patterns with key-value or document models.",
+        "avoidIf": "Your workload requires complex joins, relational integrity, or multi-table transactions.",
+        "governanceExplanation": "Pre-approved for all ACME applications. No additional review required.",
+        "impactNotes": [
+          "Suitable for session storage or catalog lookups",
+          "May require data model changes from relational schema",
+          "Consider if schema flexibility is a priority"
+        ],
+        "usedInApps": 2
+      }
+    },
+    {
+      "id": "elasticache",
+      "name": "ElastiCache",
+      "provider": "AWS",
+      "category": "Caching",
+      "description": "In-memory cache. Redis 7.x. Reduces database load for repeated queries.",
+      "fit": {
+        "signal": "suitable",
+        "label": "Useful for read-heavy traffic",
+        "appContext": "Can reduce Payments API database load for session data and repeated lookups, but requires approval.",
+        "basis": "Based on application read pattern: repeated lookups on low-churn data could benefit from caching layer"
+      },
+      "governance": "requires-approval",
+      "cost": "$$",
+      "costLabel": "Moderate",
+      "costEstimate": "~$42/mo based on selected configuration",
+      "detail": {
+        "bestFor": "Applications with high read-to-write ratios where repeated queries can be cached.",
+        "avoidIf": "Your workload is write-heavy or requires strong consistency on every read.",
+        "governanceExplanation": "Requires platform team approval. Typical turnaround 1–2 business days.",
+        "impactNotes": [
+          "Approval required before provisioning",
+          "Can significantly reduce RDS query load",
+          "Monitor cache invalidation strategy carefully"
+        ],
+        "usedInApps": 1
+      }
+    },
+    {
+      "id": "sqs",
+      "name": "SQS",
+      "provider": "AWS",
+      "category": "Messaging",
+      "description": "Managed message queuing. Standard and FIFO queues. Dead-letter queue support.",
+      "fit": {
+        "signal": "suitable",
+        "label": "Suitable for decoupled processing",
+        "appContext": "Payments API can use SQS to decouple async payment confirmation and notification workflows.",
+        "basis": "Based on application architecture: event-driven async operations benefit from a managed queue"
+      },
+      "governance": "approved",
+      "cost": "$",
+      "costLabel": "Low",
+      "costEstimate": "~$8/mo at current message volume",
+      "detail": {
+        "bestFor": "Decoupling producers and consumers, handling async workflows, and buffering spikes in request load.",
+        "avoidIf": "You need synchronous request-response patterns or real-time streaming.",
+        "governanceExplanation": "Pre-approved for all ACME applications. No additional review required.",
+        "impactNotes": [
+          "Low-cost entry point for async processing",
+          "FIFO queues available for ordered delivery",
+          "Pairs well with Lambda for event-driven patterns"
+        ],
+        "usedInApps": 3
+      }
+    },
+    {
+      "id": "redshift",
+      "name": "Redshift",
+      "provider": "AWS",
+      "category": "Analytics",
+      "description": "Analytics data warehouse. Columnar storage optimized for large-scale queries.",
+      "fit": {
+        "signal": "not-recommended",
+        "label": "Not recommended for this workload",
+        "appContext": "Payments API is a transactional application. Redshift is not suited to this workload type. Consider RDS.",
+        "basis": "Based on workload type: transactional workload rather than analytical query patterns"
+      },
+      "governance": "discouraged",
+      "cost": "$$$",
+      "costLabel": "High",
+      "costEstimate": "~$280/mo minimum. Significant ongoing cost.",
+      "alternativeId": "amazon-rds",
+      "detail": {
+        "bestFor": "Large-scale analytical workloads, business intelligence, and complex reporting across massive datasets.",
+        "avoidIf": "Your workload is transactional, real-time, or does not involve analytical query patterns.",
+        "governanceExplanation": "Discouraged for this application type. Provisioning will require exception documentation and additional review.",
+        "impactNotes": [
+          "Not suited to transactional workloads",
+          "Significantly higher cost than alternatives",
+          "Amazon RDS is the recommended alternative"
+        ],
+        "usedInApps": 0
+      }
+    },
+    {
+      "id": "lambda",
+      "name": "Lambda",
+      "provider": "AWS",
+      "category": "Compute",
+      "description": "Serverless compute. Event-driven execution. Pay per invocation only.",
+      "fit": {
+        "signal": "suitable",
+        "label": "Suitable for async processing",
+        "appContext": "Lambda can handle async payment webhooks and event-driven side effects in Payments API.",
+        "basis": "Based on application architecture: serverless compute fits event-driven async handlers"
+      },
+      "governance": "approved",
+      "cost": "$",
+      "costLabel": "Low",
+      "costEstimate": "~$5/mo at current invocation volume",
+      "detail": {
+        "bestFor": "Event-driven processing, lightweight async handlers, and short-lived compute tasks.",
+        "avoidIf": "You need persistent long-running processes, stateful compute, or high-memory workloads.",
+        "governanceExplanation": "Pre-approved for all ACME applications. No additional review required.",
+        "impactNotes": [
+          "Pay-per-invocation keeps baseline cost near zero",
+          "Integrates natively with SQS, SNS, and API Gateway",
+          "Cold start latency may affect time-sensitive handlers"
+        ],
+        "usedInApps": 5
+      }
+    }
+  ],
+  "GCP": [
+    {
+      "id": "bigquery",
+      "name": "BigQuery",
+      "provider": "GCP",
+      "category": "Analytics",
+      "description": "Serverless analytics warehouse. Scales to petabytes. Pay-per-query model.",
+      "fit": {
+        "signal": "recommended",
+        "label": "Recommended for this application",
+        "appContext": "Forecast Engine runs large analytical queries on historical data, which is BigQuery's core use case.",
+        "basis": "Based on current application pattern: batch analytics + large-scale query workload"
+      },
+      "governance": "approved",
+      "cost": "$$",
+      "costLabel": "Moderate",
+      "costEstimate": "~$55/mo at current query volume",
+      "detail": {
+        "bestFor": "Large-scale analytical queries, business intelligence, and batch data processing across massive datasets.",
+        "avoidIf": "Your workload is transactional or requires sub-second response on small lookups.",
+        "governanceExplanation": "Pre-approved for all ACME applications. No additional review required.",
+        "impactNotes": [
+          "Standard analytics platform in ACME",
+          "Pay-per-query keeps costs predictable",
+          "Integrates with Looker and existing BI tooling"
+        ],
+        "usedInApps": 3
+      }
+    },
+    {
+      "id": "cloud-storage",
+      "name": "Cloud Storage",
+      "provider": "GCP",
+      "category": "Storage",
+      "description": "Object storage for any amount of data. Durable, available, and scalable.",
+      "fit": {
+        "signal": "suitable",
+        "label": "Suitable for model artifacts",
+        "appContext": "Forecast Engine can store trained model artifacts and raw input datasets in Cloud Storage.",
+        "basis": "Based on application workload: ML pipelines benefit from a durable object store for model checkpoints"
+      },
+      "governance": "approved",
+      "cost": "$",
+      "costLabel": "Low",
+      "costEstimate": "~$12/mo at current storage volume",
+      "detail": {
+        "bestFor": "Storing unstructured data, model artifacts, backups, and large binary objects at low cost.",
+        "avoidIf": "You need a structured database or low-latency key-value access.",
+        "governanceExplanation": "Pre-approved for all ACME applications. No additional review required.",
+        "impactNotes": [
+          "Standard object store for ACME GCP workloads",
+          "Lifecycle policies available to reduce storage costs",
+          "Integrates with BigQuery for external table queries"
+        ],
+        "usedInApps": 6
+      }
+    },
+    {
+      "id": "memorystore",
+      "name": "Memorystore",
+      "provider": "GCP",
+      "category": "Caching",
+      "description": "Managed Redis and Memcached. Reduces latency for repeated query results.",
+      "fit": {
+        "signal": "suitable",
+        "label": "Useful for repeated query acceleration",
+        "appContext": "Forecast Engine runs repeated feature lookups that could be cached to reduce BigQuery scan costs.",
+        "basis": "Based on query pattern: frequently re-queried feature data is a good candidate for caching"
+      },
+      "governance": "requires-approval",
+      "cost": "$$",
+      "costLabel": "Moderate",
+      "costEstimate": "~$38/mo based on selected tier",
+      "detail": {
+        "bestFor": "Caching frequently accessed data to reduce backend load and query latency.",
+        "avoidIf": "Your data changes on every request or you require strong consistency guarantees.",
+        "governanceExplanation": "Requires platform team approval. Typical turnaround 1–2 business days.",
+        "impactNotes": [
+          "Approval required before provisioning",
+          "Can reduce BigQuery scan costs on repeated queries",
+          "Plan cache invalidation strategy before provisioning"
+        ],
+        "usedInApps": 1
+      }
+    },
+    {
+      "id": "cloud-sql",
+      "name": "Cloud SQL",
+      "provider": "GCP",
+      "category": "Database",
+      "description": "Managed PostgreSQL and MySQL. Fully managed with automated backups.",
+      "fit": {
+        "signal": "alternative",
+        "label": "Alternative available",
+        "appContext": "Cloud SQL can serve relational metadata storage for Forecast Engine, though BigQuery covers most analytical needs.",
+        "basis": "Based on workload type: metadata and config storage may benefit from a relational database alongside BigQuery"
+      },
+      "governance": "approved",
+      "cost": "$$",
+      "costLabel": "Moderate",
+      "costEstimate": "~$46/mo based on selected configuration",
+      "detail": {
+        "bestFor": "Structured relational data, configuration metadata, and transactional workloads alongside analytical pipelines.",
+        "avoidIf": "Your primary workload is analytical at scale — BigQuery is better suited for that.",
+        "governanceExplanation": "Pre-approved for all ACME applications. No additional review required.",
+        "impactNotes": [
+          "Good fit for relational metadata alongside BigQuery",
+          "Automated backups and failover supported",
+          "Consider whether BigQuery alone covers your needs first"
+        ],
+        "usedInApps": 2
+      }
+    }
+  ]
+}

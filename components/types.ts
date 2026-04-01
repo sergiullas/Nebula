@@ -62,3 +62,37 @@ export type ActionAuditEntry = {
   actor: string;
   timestamp: string;
 };
+
+export type GovernanceStatus = 'approved' | 'requires-approval' | 'discouraged';
+export type FitSignal = 'recommended' | 'suitable' | 'alternative' | 'not-recommended';
+export type CostTier = '$' | '$$' | '$$$';
+
+export type CatalogServiceFit = {
+  signal: FitSignal;
+  label: string;
+  appContext: string;
+  basis: string;
+};
+
+export type CatalogServiceDetail = {
+  bestFor: string;
+  avoidIf: string;
+  governanceExplanation: string;
+  impactNotes: string[];
+  usedInApps?: number;
+};
+
+export type CatalogService = {
+  id: string;
+  name: string;
+  provider: Provider;
+  category: string;
+  description: string;
+  fit: CatalogServiceFit;
+  governance: GovernanceStatus;
+  cost: CostTier;
+  costLabel: string;
+  costEstimate: string;
+  detail: CatalogServiceDetail;
+  alternativeId?: string;
+};

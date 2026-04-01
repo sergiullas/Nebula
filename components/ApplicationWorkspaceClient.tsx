@@ -1,6 +1,7 @@
 'use client';
 
 import { FormEvent, useEffect, useMemo, useState } from 'react';
+import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { ProviderBadge } from '@/components/ProviderBadge';
 import { HealthBadge } from '@/components/HealthBadge';
@@ -322,6 +323,12 @@ export function ApplicationWorkspaceClient({
             <div className="services-header-row">
               <h2 className="section-title">Service dependencies</h2>
               <div className="toggle-row">
+                <Link
+                  href={`/app/${application.id}/catalog`}
+                  className="incident-button add-service-cta"
+                >
+                  + Add service
+                </Link>
                 <button
                   type="button"
                   className={`incident-button secondary ${servicesView === 'list' ? 'toggle-active' : ''}`}
