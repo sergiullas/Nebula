@@ -1,16 +1,9 @@
 'use client';
 
 import Link from 'next/link';
+import { AIInsight } from '@/components/insightEngine';
 
-export type ApplicationInsight = {
-  id: string;
-  title: string;
-  description: string;
-  actionLabel: string;
-  actionType?: 'navigate' | 'modal' | 'scroll' | 'mock';
-  actionHref?: string;
-  severity?: 'low' | 'medium' | 'high';
-};
+export type ApplicationInsight = AIInsight;
 
 type ApplicationInsightsProps = {
   insights: ApplicationInsight[];
@@ -31,9 +24,16 @@ function ApplicationInsightItem({
           {insight.title}
         </h3>
         <p className="application-insight-description">{insight.description}</p>
+        <p className="application-insight-why">
+          <span className="application-insight-why-label">Based on evidence:</span> {insight.why}
+        </p>
       </div>
       {insight.actionType === 'navigate' && insight.actionHref ? (
-        <Link href={insight.actionHref} className="application-insight-action">
+        <Link
+          href={insight.actionHref}
+          className="application-insight-action"
+          aria-label={`${insight.actionLabel} for ${insight.title}`}
+        >
           {insight.actionLabel}
         </Link>
       ) : (
@@ -58,6 +58,9 @@ export function ApplicationInsights({ insights, onAction }: ApplicationInsightsP
   return (
     <section className="application-insights" aria-label="Application insights">
       <p className="application-insights-kicker">Application insights</p>
+      <p className="application-insights-supporting">
+        AI-generated recommendations based on your application context and governance policies.
+      </p>
       <div className="application-insights-list">
         {insights.map((insight) => (
           <ApplicationInsightItem key={insight.id} insight={insight} onAction={onAction} />
