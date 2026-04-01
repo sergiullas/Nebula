@@ -1103,7 +1103,7 @@ a {
 }
 
 .detail-sidebar-block {
-  border-bottom: 1px solid #cdd3db;
+  border-bottom: var(--border-width) solid var(--border-medium);
   padding-bottom: 14px;
 }
 
