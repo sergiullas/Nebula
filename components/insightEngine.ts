@@ -162,10 +162,10 @@ export const buildApplicationInsights = ({
       why: `Based on policy: ${highestGovernanceRisk.fit.appContext}`,
       recommendation:
         highestGovernanceRisk.alternativeId !== undefined
-          ? `Review ${findServiceNameById(catalogServices, highestGovernanceRisk.alternativeId) ?? 'the approved alternative'} before provisioning.`
+          ? `View ${findServiceNameById(catalogServices, highestGovernanceRisk.alternativeId) ?? 'the approved alternative'} before provisioning.`
           : `Open governance guidance before provisioning ${highestGovernanceRisk.name}.`,
       actionLabel:
-        highestGovernanceRisk.alternativeId !== undefined ? 'Review approved alternative' : 'Open governance guidance',
+        highestGovernanceRisk.alternativeId !== undefined ? 'View approved alternative' : 'Open governance guidance',
       actionType: 'navigate',
       actionHref: `/app/${application.id}/catalog/${highestGovernanceRisk.alternativeId ?? highestGovernanceRisk.id}`,
       confidence: highestGovernanceRisk.governance === 'discouraged' ? 0.95 : 0.83,
@@ -195,16 +195,19 @@ export const buildApplicationInsights = ({
   }
 
   if (application.activeIncident && environment === 'prod' && hasTransactionalDatabase) {
+    const databaseService = presentCatalogServices.find((service) => service.category === 'Database');
+
     insights.push({
       id: 'reliability-resilience-ha-gap',
       type: 'reliability',
       severity: 'high',
-      title: 'Resilience posture may increase repeat failure risk',
-      description: 'Transactional database dependency should be reviewed for high-availability configuration in production.',
-      why: 'Based on workload pattern: transactional API traffic in production depends on a relational database tier.',
-      recommendation: 'Review the production database resilience configuration and confirm multi-zone failover readiness.',
-      actionLabel: 'Open affected dependencies',
-      actionType: 'suggest',
+      title: 'Production database is not configured for high availability',
+      description: 'Current production database posture should be validated for multi-zone failover readiness.',
+      why: 'Based on deployment configuration: single-AZ database in production increases outage risk.',
+      recommendation: 'Open database configuration and confirm high-availability settings before the next release.',
+      actionLabel: 'Open database configuration',
+      actionType: 'navigate',
+      actionHref: `/app/${application.id}/catalog/${databaseService?.id ?? 'amazon-rds'}`,
       confidence: 0.85,
       source: 'ops:resilience-pattern',
       createdAt,
@@ -224,7 +227,7 @@ export const buildApplicationInsights = ({
         notRecommendedService.alternativeId !== undefined
           ? `Switch to ${findServiceNameById(catalogServices, notRecommendedService.alternativeId) ?? 'the approved alternative'} for this workload pattern.`
           : `Reassess the selected service for this application pattern.`,
-      actionLabel: 'Review fit details',
+      actionLabel: 'Open service fit rationale',
       actionType: 'navigate',
       actionHref: `/app/${application.id}/catalog/${notRecommendedService.id}`,
       confidence: 0.88,

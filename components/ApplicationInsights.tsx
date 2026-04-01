@@ -25,7 +25,7 @@ function ApplicationInsightItem({
         </h3>
         <p className="application-insight-description">{insight.description}</p>
         <p className="application-insight-why">
-          <span className="application-insight-why-label">Based on evidence:</span> {insight.why}
+          <span className="application-insight-why-label">Evidence:</span> {insight.why}
         </p>
       </div>
       {insight.actionType === 'navigate' && insight.actionHref ? (
