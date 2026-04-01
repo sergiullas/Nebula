@@ -190,7 +190,7 @@ export function ApplicationWorkspaceClient({
 
     const rankedInsights: ApplicationInsight[] = [];
     const hasTransactionalDatabase = dependencies.some((dependency) =>
-      /RDS|PostgreSQL/i.test(dependency.name) || /RDS|PostgreSQL/i.test(dependency.metadata),
+      /RDS|PostgreSQL/i.test(`${dependency.name} ${dependency.metadata}`),
     );
 
     const showsDiscouragedPattern = application.provider === 'AWS' && hasTransactionalDatabase;
