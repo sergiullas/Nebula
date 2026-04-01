@@ -1,7 +1,7 @@
 'use client';
 
 import { FormEvent, useEffect, useMemo, useState } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { ProviderBadge } from '@/components/ProviderBadge';
 import { HealthBadge } from '@/components/HealthBadge';
 import { buildSharedActions } from '@/components/actions';
@@ -86,6 +86,7 @@ export function ApplicationWorkspaceClient({
   logsMetrics,
   currentEnvironment,
 }: ApplicationWorkspaceClientProps) {
+  const router = useRouter();
   const searchParams = useSearchParams();
   const [isCompanionOpen, setIsCompanionOpen] = useState(false);
   const [queryInput, setQueryInput] = useState('');
@@ -322,23 +323,37 @@ export function ApplicationWorkspaceClient({
             <div className="services-header-row">
               <h2 className="section-title">Service dependencies</h2>
               <div className="toggle-row">
-                <button
-                  type="button"
-                  className={`incident-button secondary ${servicesView === 'list' ? 'toggle-active' : ''}`}
-                  onClick={() => setServicesView('list')}
-                >
-                  List
-                </button>
-                <button
-                  type="button"
-                  className={`incident-button secondary ${servicesView === 'graph' ? 'toggle-active' : ''}`}
-                  onClick={() => setServicesView('graph')}
-                >
-                  Graph
+                {dependencies.length > 0 && (
+                  <>
+                    <button
+                      type="button"
+                      className={`incident-button secondary ${servicesView === 'list' ? 'toggle-active' : ''}`}
+                      onClick={() => setServicesView('list')}
+                    >
+                      List
+                    </button>
+                    <button
+                      type="button"
+                      className={`incident-button secondary ${servicesView === 'graph' ? 'toggle-active' : ''}`}
+                      onClick={() => setServicesView('graph')}
+                    >
+                      Graph
+                    </button>
+                  </>
+                )}
+                <button type="button" className="incident-button" onClick={() => router.push(`/app/${application.id}/catalog`)}>
+                  {dependencies.length > 0 ? 'Add service' : 'Add your first service'}
                 </button>
               </div>
             </div>
-            {servicesView === 'list' ? (
+            {dependencies.length === 0 ? (
+              <article className="section-card">
+                <h3 className="section-title">No services added yet</h3>
+                <p className="placeholder">
+                  Start with app-scoped recommendations for {application.name} in the {application.provider} context.
+                </p>
+              </article>
+            ) : servicesView === 'list' ? (
               <div className="dependency-list">
                 {dependencies.map((dependency) => (
                   <article key={dependency.name} className="dependency-row">

@@ -62,3 +62,33 @@ export type ActionAuditEntry = {
   actor: string;
   timestamp: string;
 };
+
+export type ServiceGovernanceStatus = 'Approved' | 'Requires approval' | 'Discouraged';
+export type ServiceCostSignal = 'Low' | 'Moderate' | 'High';
+
+export type ServiceCatalogItem = {
+  id: string;
+  name: string;
+  provider: Provider;
+  category: string;
+  description: string;
+  fitSignal: string;
+  governance: ServiceGovernanceStatus;
+  cost: ServiceCostSignal;
+  trustSignal?: string;
+  recommendedAlternativeServiceId?: string;
+  detail: {
+    bestFor: string;
+    avoidIf: string;
+    whyThisFits: string;
+    recommendationBasis: string[];
+    governanceExplanation: string;
+    costEstimate: string;
+    impactNotes: string[];
+    configurationDefaults: {
+      environment: 'dev' | 'staging' | 'prod';
+      region: string;
+      sizeTier: string;
+    };
+  };
+};
