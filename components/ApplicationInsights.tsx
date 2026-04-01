@@ -4,12 +4,16 @@ import Link from 'next/link';
 
 export type ApplicationInsight = {
   id: string;
+  type?: 'cost' | 'architecture' | 'reliability' | 'governance';
   title: string;
-  description: string;
+  description?: string;
+  why: string;
   actionLabel: string;
-  actionType?: 'navigate' | 'modal' | 'scroll' | 'mock';
+  actionType?: 'navigate' | 'modal' | 'suggest';
   actionHref?: string;
   severity?: 'low' | 'medium' | 'high';
+  confidence?: number;
+  source?: string;
 };
 
 type ApplicationInsightsProps = {
@@ -30,7 +34,8 @@ function ApplicationInsightItem({
         <h3 id={`insight-${insight.id}`} className="application-insight-title">
           {insight.title}
         </h3>
-        <p className="application-insight-description">{insight.description}</p>
+        {insight.description ? <p className="application-insight-description">{insight.description}</p> : null}
+        <p className="application-insight-why">Based on: {insight.why}</p>
       </div>
       {insight.actionType === 'navigate' && insight.actionHref ? (
         <Link href={insight.actionHref} className="application-insight-action">

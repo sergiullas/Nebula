@@ -517,13 +517,15 @@ a {
   justify-content: space-between;
   align-items: flex-start;
   gap: var(--space-3);
-  padding: var(--space-2) 0;
-  border-top: var(--border-width) solid var(--border-default);
+  padding: var(--space-3);
+  border: var(--border-width) solid var(--border-default);
+  border-radius: var(--radius-md);
+  background: var(--bg-primary);
 }
 
 .application-insight-item:first-child {
-  border-top: 0;
-  padding-top: 0;
+  border-top: var(--border-width) solid var(--border-default);
+  padding-top: var(--space-3);
 }
 
 .application-insight-title {
@@ -533,8 +535,14 @@ a {
 }
 
 .application-insight-description {
-  margin: 0;
+  margin: 0 0 var(--space-1);
   color: var(--text-secondary);
+  font-size: var(--text-sm);
+}
+
+.application-insight-why {
+  margin: 0;
+  color: var(--text-tertiary);
   font-size: var(--text-sm);
 }
 
@@ -584,13 +592,15 @@ a {
   justify-content: space-between;
   align-items: flex-start;
   gap: var(--space-3);
-  padding: var(--space-2) 0;
-  border-top: var(--border-width) solid var(--border-default);
+  padding: var(--space-3);
+  border: var(--border-width) solid var(--border-default);
+  border-radius: var(--radius-md);
+  background: var(--bg-primary);
 }
 
 .application-insight-item:first-child {
-  border-top: 0;
-  padding-top: 0;
+  border-top: var(--border-width) solid var(--border-default);
+  padding-top: var(--space-3);
 }
 
 .application-insight-title {
@@ -600,8 +610,14 @@ a {
 }
 
 .application-insight-description {
-  margin: 0;
+  margin: 0 0 var(--space-1);
   color: var(--text-secondary);
+  font-size: var(--text-sm);
+}
+
+.application-insight-why {
+  margin: 0;
+  color: var(--text-tertiary);
   font-size: var(--text-sm);
 }
 

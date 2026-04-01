@@ -6,6 +6,7 @@ import { useSearchParams } from 'next/navigation';
 import { Badge, BadgeVariant } from '@/components/Badge';
 import { ActionStatus, AppLogsMetrics, CloudApplication, DependencyHealthStatus, HealthStatus } from '@/components/types';
 import { ApplicationInsight, ApplicationInsights } from '@/components/ApplicationInsights';
+import { useApplicationInsights } from '@/components/useApplicationInsights';
 
 type ApplicationWorkspaceClientProps = {
   application: CloudApplication;
@@ -183,72 +184,21 @@ export function ApplicationWorkspaceClient({
   };
 
 
-  const applicationInsights = useMemo<ApplicationInsight[]>(() => {
-    if (application.id !== 'payments-api') {
-      return [];
-    }
-
-    const rankedInsights: ApplicationInsight[] = [];
-    const hasTransactionalDatabase = dependencies.some((dependency) =>
-      /RDS|PostgreSQL/i.test(`${dependency.name} ${dependency.metadata}`),
-    );
-
-    const showsDiscouragedPattern = application.provider === 'AWS' && hasTransactionalDatabase;
-    if (showsDiscouragedPattern) {
-      rankedInsights.push({
-        id: 'governance-exception-review',
-        title: 'Selected service requires exception review',
-        description:
-          'Redshift is currently selected in this app context, but it does not meet approved usage criteria for transactional workloads.',
-        actionLabel: 'Review approved alternative',
-        actionType: 'navigate',
-        actionHref: `/app/${application.id}/catalog/redshift`,
-        severity: 'high',
-      });
-    }
-
-    if (hasTransactionalDatabase) {
-      rankedInsights.push({
-        id: 'reliability-multi-az',
-        title: 'Production database is not configured for high availability',
-        description: 'A single-zone failure could interrupt payment processing for checkout and settlement traffic.',
-        actionLabel: 'Enable multi-AZ',
-        actionType: 'mock',
-        severity: 'high',
-      });
-
-      rankedInsights.push({
-        id: 'architecture-fit-redshift',
-        title: 'Redshift is not suited for this workload',
-        description: 'Payments API depends on transactional consistency and relational query patterns.',
-        actionLabel: 'Review RDS alternative',
-        actionType: 'navigate',
-        actionHref: `/app/${application.id}/catalog/amazon-rds`,
-        severity: 'medium',
-      });
-
-      rankedInsights.push({
-        id: 'cost-rds-overprovisioned',
-        title: 'RDS instance is over-provisioned',
-        description: 'Current usage trends suggest you are paying for more capacity than this application requires.',
-        actionLabel: 'Resize instance',
-        actionType: 'scroll',
-        severity: 'medium',
-      });
-    }
-
-    return rankedInsights.slice(0, 3);
-  }, [application.id, application.provider, dependencies]);
+  const applicationInsights = useApplicationInsights({
+    application,
+    logsMetrics,
+    currentEnvironment,
+  });
 
   const handleInsightAction = (insight: ApplicationInsight) => {
-    if (insight.id === 'reliability-multi-az') {
-      setActionFeedback('Opened high-availability recommendation. Multi-AZ can be enabled from service configuration.');
+    if (insight.type === 'reliability') {
+      setActiveTab('Services');
+      setActionFeedback('Highlighted dependencies in Services so you can mitigate reliability risks.');
       return;
     }
 
-    if (insight.id === 'cost-rds-overprovisioned') {
-      setActiveTab('Services');
-      setActionFeedback('Jumped to Services so you can review dependency sizing.');
+    if (insight.actionType === 'modal') {
+      setActionFeedback(`Opened recommendation details for ${insight.title}.`);
       return;
     }
 
