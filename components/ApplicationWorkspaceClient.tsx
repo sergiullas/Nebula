@@ -30,7 +30,7 @@ const getModalContent = (
   action: string,
   appName: string,
   environment: string,
-  deploymentVersion?: string,
+  _deploymentVersion?: string,
 ) => {
   if (action === 'Roll back deployment') {
     return {
