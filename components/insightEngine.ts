@@ -27,6 +27,7 @@ type BuildInsightsInput = {
   environment: string;
   logsMetrics?: AppLogsMetrics;
   catalogServices: CatalogService[];
+  referenceTimestamp: string;
 };
 
 const typePriority: Record<AIInsightType, number> = {
@@ -41,8 +42,6 @@ const governancePriority: Record<GovernanceStatus, number> = {
   'requires-approval': 1,
   approved: 2,
 };
-
-const toCreatedAt = () => new Date().toISOString();
 
 const hasExplanation = (insight: AIInsight) => insight.why.trim().length > 0;
 
@@ -88,12 +87,26 @@ const sortInsights = (insights: AIInsight[]) =>
     })
     .slice(0, 3);
 
+const sourceServiceId = (source: string) => {
+  const [scope, serviceId] = source.split(':');
+  if (scope !== 'catalog' || !serviceId) {
+    return undefined;
+  }
+
+  return serviceId;
+};
+
 const isConsistentWithCatalog = (insight: AIInsight, catalogServices: CatalogService[]) => {
   if (insight.type !== 'governance' && insight.type !== 'architecture') {
     return true;
   }
 
-  const related = catalogServices.find((service) => insight.source.includes(service.id));
+  const relatedServiceId = sourceServiceId(insight.source);
+  if (!relatedServiceId) {
+    return false;
+  }
+
+  const related = catalogServices.find((service) => service.id === relatedServiceId);
   if (!related) {
     return false;
   }
@@ -110,9 +123,10 @@ export const buildApplicationInsights = ({
   environment,
   logsMetrics,
   catalogServices,
+  referenceTimestamp,
 }: BuildInsightsInput): AIInsight[] => {
   const insights: AIInsight[] = [];
-  const createdAt = toCreatedAt();
+  const createdAt = referenceTimestamp;
   const dependencies = logsMetrics?.dependencies ?? [];
   const metrics = logsMetrics?.metrics;
 

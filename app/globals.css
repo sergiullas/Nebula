@@ -615,16 +615,6 @@ a {
   font-size: var(--text-sm);
 }
 
-.application-insight-why {
-  margin: var(--space-1) 0 0;
-  color: var(--text-tertiary);
-  font-size: var(--text-sm);
-}
-
-.application-insight-why-label {
-  font-weight: var(--weight-medium);
-}
-
 .application-insight-action {
   flex-shrink: 0;
   border: var(--border-width) solid var(--border-medium);
