@@ -733,20 +733,19 @@ a {
 }
 
 .service-card {
-  background: #f8f8f7;
-  border: 1px solid #d1d5db;
-  border-radius: 12px;
-  padding: 16px;
+  background: var(--bg-primary);
+  border: var(--border-width) solid var(--border-default);
+  border-radius: var(--radius-md);
+  padding: var(--space-3) var(--space-4);
   display: flex;
   flex-direction: column;
   gap: 10px;
   cursor: pointer;
-  transition: border-color 120ms ease, box-shadow 120ms ease;
+  transition: border-color var(--transition-fast);
 }
 
 .service-card:hover {
-  border-color: #9ca3af;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+  border-color: var(--border-medium);
 }
 
 .service-card-top {
