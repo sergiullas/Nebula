@@ -1,3 +1,4 @@
+import { Badge, BadgeVariant } from './Badge';
 import { Provider } from './types';
 
 type ProviderBadgeProps = {
@@ -5,8 +6,6 @@ type ProviderBadgeProps = {
 };
 
 export function ProviderBadge({ provider }: ProviderBadgeProps) {
-  const className =
-    provider === 'AWS' ? 'provider-aws' : provider === 'GCP' ? 'provider-gcp' : 'provider-internal';
-
-  return <span className={`pill ${className}`}>{provider}</span>;
+  const variant: BadgeVariant = provider === 'AWS' ? 'aws' : provider === 'GCP' ? 'gcp' : 'unknown';
+  return <Badge variant={variant}>{provider}</Badge>;
 }

@@ -38,8 +38,6 @@ export function CatalogClient({ application, services, currentEnvironment }: Cat
 
   const filtered = activeCategory === ALL_CATEGORY ? services : services.filter((s) => s.category === activeCategory);
 
-  const quickLinks = services.slice(0, 3);
-
   return (
     <div className="catalog-page">
       <header className="catalog-header">
@@ -53,25 +51,10 @@ export function CatalogClient({ application, services, currentEnvironment }: Cat
           </p>
         </div>
         <div className="pill-row">
-          <span className="pill provider-aws" style={application.provider === 'GCP' ? { background: '#e8eef9', color: '#355388' } : {}}>
-            {application.provider}
-          </span>
+          <ProviderBadge provider={application.provider} />
           <span className="pill env-pill">{currentEnvironment}</span>
         </div>
       </header>
-
-      <div className="catalog-quick-bar">
-        <span className="catalog-quick-label">Try a service:</span>
-        {quickLinks.map((service) => (
-          <Link
-            key={service.id}
-            href={`/app/${application.id}/catalog/${service.id}`}
-            className={`catalog-quick-chip ${governanceClass[service.governance]}`}
-          >
-            {service.name} — {governanceLabel[service.governance]}
-          </Link>
-        ))}
-      </div>
 
       <nav className="catalog-tabs" aria-label="Service categories">
         {categories.map((cat) => (

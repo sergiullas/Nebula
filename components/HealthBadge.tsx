@@ -1,3 +1,4 @@
+import { Badge } from './Badge';
 import { HealthStatus } from './types';
 
 type HealthBadgeProps = {
@@ -7,9 +8,10 @@ type HealthBadgeProps = {
 const healthLabel: Record<HealthStatus, string> = {
   healthy: 'Healthy',
   warning: 'Degraded',
-  critical: 'Critical'
+  critical: 'Critical',
 };
 
 export function HealthBadge({ health }: HealthBadgeProps) {
-  return <span className={`pill health-${health}`}>{healthLabel[health]}</span>;
+  const variant = health === 'healthy' ? 'healthy' : health === 'critical' ? 'critical' : 'degraded';
+  return <Badge variant={variant}>{healthLabel[health]}</Badge>;
 }

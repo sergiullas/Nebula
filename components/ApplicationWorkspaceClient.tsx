@@ -4,7 +4,6 @@ import { FormEvent, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { Badge, BadgeVariant } from '@/components/Badge';
-import { buildSharedActions } from '@/components/actions';
 import { ActionStatus, AppLogsMetrics, CloudApplication, DependencyHealthStatus, HealthStatus } from '@/components/types';
 
 type ApplicationWorkspaceClientProps = {
@@ -183,7 +182,6 @@ export function ApplicationWorkspaceClient({
     setPendingAction(null);
   };
 
-  const sharedActions = useMemo(() => buildSharedActions(application), [application]);
   const providerVariant = application.provider === 'AWS' ? 'aws' : application.provider === 'GCP' ? 'gcp' : 'unknown';
   const healthVariant = activeHealth === 'healthy' ? 'healthy' : activeHealth === 'critical' ? 'critical' : 'degraded';
 
@@ -296,10 +294,6 @@ export function ApplicationWorkspaceClient({
                 <p className="placeholder muted">Deployment history coming soon</p>
               </article>
 
-              <article className="section-card">
-                <h2 className="section-title">Shared actions</h2>
-                <p className="placeholder">{sharedActions.map((action) => action.label).join(' · ')}</p>
-              </article>
             </section>
           </>
         )}
