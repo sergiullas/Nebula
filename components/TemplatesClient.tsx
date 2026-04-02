@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import { CloudTemplate, TemplateGovernanceState, TemplateWorkloadType, TemplateComplexity } from '@/components/types';
 
@@ -17,9 +17,9 @@ const workloadLabels: Record<TemplateWorkloadType, string> = {
 };
 
 const governanceLabel: Record<TemplateGovernanceState, string> = {
-  approved: 'Fully approved',
+  approved: 'Approved',
   'requires-approval': 'Requires approval',
-  'includes-restricted': 'Includes restricted',
+  'includes-restricted': 'Includes restricted services',
 };
 
 const governanceClass: Record<TemplateGovernanceState, string> = {
@@ -36,9 +36,39 @@ const complexityLabel: Record<TemplateComplexity, string> = {
 
 const ALL = 'All';
 
+const toSentence = (value: string) => {
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return '';
+  }
+
+  const firstSentence = trimmed.split(/(?<=[.!?])\s+/)[0];
+  return firstSentence.endsWith('.') ? firstSentence : `${firstSentence}.`;
+};
+
+const summarizeIncluded = (template: CloudTemplate) => {
+  const serviceCategories = Array.from(new Set(template.services.map((service) => service.category.toLowerCase())));
+  return `Includes: ${serviceCategories.slice(0, 3).join(', ')}`;
+};
+
+const summarizeConstraints = (template: CloudTemplate) => {
+  const lockedCount = template.parameters.filter((param) => !param.editable).length;
+  if (lockedCount === 0) {
+    return 'Constraints: Configurable within policy limits';
+  }
+
+  if (lockedCount === 1) {
+    const lockedParam = template.parameters.find((param) => !param.editable);
+    return `Constraints: ${lockedParam?.label ?? '1 locked setting'} controlled by policy`;
+  }
+
+  return `Constraints: ${lockedCount} settings are policy-locked`;
+};
+
 function TemplateCard({ template }: { template: CloudTemplate }) {
-  const serviceCount = template.services.length;
-  const requiredCount = template.services.filter((s) => s.required).length;
+  const recommendation = toSentence(template.aiInsight.fit);
+  const purpose = toSentence(template.purpose);
+  const rationale = toSentence(template.rationale);
 
   return (
     <Link href={`/templates/${template.id}`} className="template-card-link">
@@ -46,42 +76,42 @@ function TemplateCard({ template }: { template: CloudTemplate }) {
         <div className="template-card-header">
           <div className="template-card-title-row">
             <h2 className="template-card-name">{template.name}</h2>
-            <span className="pill env-pill">{workloadLabels[template.type]}</span>
-          </div>
-          <div className="template-card-meta-row">
             <span className={`pill ${governanceClass[template.governanceState]}`}>
               {governanceLabel[template.governanceState]}
             </span>
+          </div>
+          <div className="template-card-meta-row">
+            <span className="pill env-pill">{workloadLabels[template.type]}</span>
             <span className="pill env-pill template-complexity-pill">{complexityLabel[template.complexity]}</span>
             <span className="pill env-pill">{template.provider}</span>
           </div>
         </div>
 
-        <p className="template-card-purpose">{template.purpose}</p>
+        <p className="template-card-purpose">{purpose}</p>
 
-        <div className="template-card-services">
-          <p className="template-card-services-label">
-            {serviceCount} service{serviceCount !== 1 ? 's' : ''} · {requiredCount} required
-          </p>
-          <div className="template-card-service-pills">
-            {template.services.map((svc) => (
-              <span key={svc.serviceId} className={`pill env-pill ${svc.required ? '' : 'template-service-optional'}`}>
-                {svc.name}
-              </span>
-            ))}
-          </div>
+        <div className="template-card-ai-signal" style={{ marginTop: 12 }}>
+          <span className="template-card-confidence">Recommendation</span>
+          <span>{recommendation}</span>
         </div>
+
+        <div className="template-card-services" style={{ marginTop: 12 }}>
+          <p className="template-card-services-label">Key signals</p>
+          <p className="detail-impact-note">{summarizeIncluded(template)}</p>
+          <p className="detail-impact-note">
+            Cost: Est. ${template.estimatedMonthlyCost.min}–${template.estimatedMonthlyCost.max} / month
+          </p>
+          <p className="detail-impact-note">{summarizeConstraints(template)}</p>
+        </div>
+
+        <p className="template-card-purpose" style={{ marginTop: 12 }}>{rationale}</p>
 
         <div className="template-card-footer">
           <div className="template-card-cost">
-            <span className="template-card-cost-label">Est. monthly</span>
-            <span className="template-card-cost-value">
-              ${template.estimatedMonthlyCost.min}–${template.estimatedMonthlyCost.max}
-            </span>
+            <span className="template-card-cost-label">AI confidence</span>
+            <span className="template-card-cost-value">{template.aiInsight.confidence}%</span>
           </div>
           <div className="template-card-ai-signal">
-            <span className="template-card-confidence">{template.aiInsight.confidence}% confidence</span>
-            <span className="template-card-cta">View template →</span>
+            <span className="template-card-cta">Inspect template →</span>
           </div>
         </div>
       </article>
@@ -101,13 +131,17 @@ export function TemplatesClient({ templates }: TemplatesClientProps) {
   const allGovernance: TemplateGovernanceState[] = ['approved', 'requires-approval', 'includes-restricted'];
   const allComplexities: TemplateComplexity[] = ['low', 'medium', 'high'];
 
-  const filtered = templates.filter((t) => {
-    if (activeWorkload !== ALL && t.type !== activeWorkload) return false;
-    if (activeGovernance !== ALL && t.governanceState !== activeGovernance) return false;
-    if (activeProvider !== ALL && t.provider !== activeProvider) return false;
-    if (activeComplexity !== ALL && t.complexity !== activeComplexity) return false;
-    return true;
-  });
+  const filtered = useMemo(
+    () =>
+      templates.filter((t) => {
+        if (activeWorkload !== ALL && t.type !== activeWorkload) return false;
+        if (activeGovernance !== ALL && t.governanceState !== activeGovernance) return false;
+        if (activeProvider !== ALL && t.provider !== activeProvider) return false;
+        if (activeComplexity !== ALL && t.complexity !== activeComplexity) return false;
+        return true;
+      }),
+    [activeComplexity, activeGovernance, activeProvider, activeWorkload, templates],
+  );
 
   const hasActiveFilter =
     activeWorkload !== ALL || activeGovernance !== ALL || activeProvider !== ALL || activeComplexity !== ALL;
@@ -138,7 +172,6 @@ export function TemplatesClient({ templates }: TemplatesClientProps) {
         </p>
       </div>
 
-      {/* Filters */}
       <div className="templates-filters">
         <div className="templates-filter-group">
           <span className="templates-filter-label">Workload</span>
@@ -231,7 +264,6 @@ export function TemplatesClient({ templates }: TemplatesClientProps) {
         </div>
       ) : (
         <>
-          {/* Primary recommendations */}
           <section className="templates-section">
             <div className="templates-section-header">
               <p className="templates-section-label">
@@ -250,7 +282,6 @@ export function TemplatesClient({ templates }: TemplatesClientProps) {
             </div>
           </section>
 
-          {/* Expanded browsing */}
           {remainingTemplates.length > 0 && (
             <section className="templates-section">
               <div className="templates-section-header">

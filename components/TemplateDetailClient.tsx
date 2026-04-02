@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import {
   CloudTemplate,
@@ -36,9 +36,9 @@ const governanceClass: Record<GovernanceStatus, string> = {
 };
 
 const templateGovernanceLabel: Record<TemplateGovernanceState, string> = {
-  approved: 'Fully approved',
+  approved: 'Approved',
   'requires-approval': 'Requires approval',
-  'includes-restricted': 'Includes restricted',
+  'includes-restricted': 'Includes restricted services',
 };
 
 const templateGovernanceClass: Record<TemplateGovernanceState, string> = {
@@ -61,6 +61,53 @@ const STEP_LABELS: Record<FlowStep, string> = {
 };
 
 const STEPS: FlowStep[] = ['overview', 'configure', 'review'];
+
+type ConstraintRule = {
+  blockedValues: string[];
+  explanation: string;
+  suggestedAlternative?: string;
+  exceptionPath?: string;
+};
+
+const constraintRulesByTemplate: Record<string, Record<string, ConstraintRule>> = {
+  'realtime-analytics-pipeline': {
+    region: {
+      blockedValues: ['asia-east1'],
+      explanation: 'asia-east1 is restricted due to data residency policy.',
+      suggestedAlternative: 'us-central1',
+    },
+  },
+  'event-driven-microservice': {
+    region: {
+      blockedValues: ['eu-west-1'],
+      explanation: 'eu-west-1 is currently restricted for this async pattern due to unresolved compliance controls.',
+      exceptionPath: 'Request a governed exception through Cloud Platform review workflow.',
+    },
+  },
+};
+
+const groupLabelForParam = (paramId: string, label: string) => {
+  const value = `${paramId} ${label}`.toLowerCase();
+  if (value.includes('environment')) return 'Environment';
+  if (value.includes('region') || value.includes('residency') || value.includes('availability')) return 'Deployment';
+  if (value.includes('size') || value.includes('capacity') || value.includes('instance') || value.includes('node')) return 'Scale';
+  return 'Additional';
+};
+
+const estimateConfiguredCost = (template: CloudTemplate, paramValues: Record<string, string>) => {
+  let multiplier = 1;
+  const allValues = Object.values(paramValues).join(' ').toLowerCase();
+
+  if (allValues.includes('large')) multiplier += 0.35;
+  if (allValues.includes('medium')) multiplier += 0.15;
+  if (allValues.includes('prod')) multiplier += 0.2;
+  if (allValues.includes('staging')) multiplier += 0.1;
+  if (allValues.includes('nearline')) multiplier -= 0.08;
+
+  const min = Math.round(template.estimatedMonthlyCost.min * multiplier);
+  const max = Math.round(template.estimatedMonthlyCost.max * multiplier);
+  return { min, max };
+};
 
 // ── Step components ─────────────────────────────────────────
 
@@ -159,11 +206,33 @@ type ConfigureStepProps = {
   template: CloudTemplate;
   paramValues: Record<string, string>;
   onParamChange: (id: string, value: string) => void;
+  onOutOfRangeAttempt: (message: string) => void;
+  blockedMessage: string;
+  configuredCost: { min: number; max: number };
   onBack: () => void;
   onNext: () => void;
 };
 
-function ConfigureStep({ template, paramValues, onParamChange, onBack, onNext }: ConfigureStepProps) {
+function ConfigureStep({
+  template,
+  paramValues,
+  onParamChange,
+  onOutOfRangeAttempt,
+  blockedMessage,
+  configuredCost,
+  onBack,
+  onNext,
+}: ConfigureStepProps) {
+  const groupedParams = useMemo(() => {
+    const groups = new Map<string, typeof template.parameters>();
+    template.parameters.forEach((param) => {
+      const group = groupLabelForParam(param.id, param.label);
+      const existing = groups.get(group) ?? [];
+      groups.set(group, [...existing, param]);
+    });
+    return groups;
+  }, [template]);
+
   return (
     <>
       <div className="detail-summary-card">
@@ -176,36 +245,66 @@ function ConfigureStep({ template, paramValues, onParamChange, onBack, onNext }:
       </div>
 
       <section className="detail-config-section">
-        <p className="detail-section-label">PARAMETERS</p>
-        {template.parameters.map((param) => (
-          <div key={param.id} className="detail-config-field">
-            <label className="detail-config-label" htmlFor={`param-${param.id}`}>
-              {param.label}
-              {!param.editable && (
-                <span className="template-param-locked-badge">Locked</span>
-              )}
-            </label>
-            {param.editable ? (
-              <select
-                id={`param-${param.id}`}
-                className="detail-config-select"
-                value={paramValues[param.id]}
-                onChange={(e) => onParamChange(param.id, e.target.value)}
-              >
-                {param.options.map((opt) => (
-                  <option key={opt} value={opt}>{opt}</option>
-                ))}
-              </select>
-            ) : (
-              <>
-                <div className="template-param-locked-field">{param.default}</div>
-                {param.lockedReason && (
-                  <p className="template-param-locked-reason">{param.lockedReason}</p>
+        <p className="detail-section-label">PARAMETERS BY SECTION</p>
+        {[...groupedParams.entries()].map(([group, params]) => (
+          <div key={group} style={{ marginBottom: 20 }}>
+            <p className="detail-why-block-label">{group}</p>
+            {params.map((param) => (
+              <div key={param.id} className="detail-config-field">
+                <label className="detail-config-label" htmlFor={`param-${param.id}`}>
+                  {param.label}
+                  {!param.editable && (
+                    <span className="template-param-locked-badge">Locked</span>
+                  )}
+                </label>
+                {param.editable ? (
+                  <select
+                    id={`param-${param.id}`}
+                    className="detail-config-select"
+                    value={paramValues[param.id]}
+                    onChange={(e) => onParamChange(param.id, e.target.value)}
+                  >
+                    {param.options.map((opt) => (
+                      <option key={opt} value={opt}>{opt}</option>
+                    ))}
+                  </select>
+                ) : (
+                  <>
+                    <div className="template-param-locked-field">{param.default}</div>
+                    {param.lockedReason && (
+                      <p className="template-param-locked-reason">{param.lockedReason}</p>
+                    )}
+                  </>
                 )}
-              </>
-            )}
+
+                {param.editable && param.options.length > 0 && (
+                  <button
+                    type="button"
+                    className="incident-button secondary"
+                    style={{ marginTop: 8 }}
+                    onClick={() => onOutOfRangeAttempt(`custom-${param.id}`)}
+                  >
+                    Simulate out-of-range attempt
+                  </button>
+                )}
+              </div>
+            ))}
           </div>
         ))}
+
+        {blockedMessage && (
+          <div className="provision-outcome provision-outcome-exception" style={{ marginBottom: 14 }}>
+            <p className="provision-outcome-title">Change blocked by policy</p>
+            <p className="provision-outcome-body">{blockedMessage}</p>
+          </div>
+        )}
+
+        <div className="detail-why-block" style={{ marginTop: 8 }}>
+          <p className="detail-why-block-label">DYNAMIC COST PREVIEW</p>
+          <p className="detail-why-block-text">
+            Estimated range for current selections: ${configuredCost.min}–${configuredCost.max} / month
+          </p>
+        </div>
       </section>
 
       <div className="template-step-actions">
@@ -223,11 +322,12 @@ function ConfigureStep({ template, paramValues, onParamChange, onBack, onNext }:
 type ReviewStepProps = {
   template: CloudTemplate;
   paramValues: Record<string, string>;
+  configuredCost: { min: number; max: number };
   onBack: () => void;
   onProvision: () => void;
 };
 
-function ReviewStep({ template, paramValues, onBack, onProvision }: ReviewStepProps) {
+function ReviewStep({ template, paramValues, configuredCost, onBack, onProvision }: ReviewStepProps) {
   return (
     <>
       <div className="detail-summary-card">
@@ -253,6 +353,26 @@ function ReviewStep({ template, paramValues, onBack, onProvision }: ReviewStepPr
             <span className="provision-modal-key">Actor</span>
             <span>Devin</span>
           </div>
+        </div>
+      </section>
+
+      <section className="detail-why-section">
+        <p className="detail-section-label">GOVERNANCE &amp; COST IMPACT</p>
+        <div className="detail-why-block">
+          <p className="detail-impact-note">Approved components: {template.approvedComponents.join(', ') || 'None listed'}</p>
+          {template.requiresApprovalElements.length > 0 && (
+            <p className="detail-impact-note">
+              Requires approval: {template.requiresApprovalElements.join(', ')}
+            </p>
+          )}
+          {template.restrictedOptions.length > 0 && (
+            <p className="detail-impact-note">
+              Restricted options: {template.restrictedOptions.join(', ')}
+            </p>
+          )}
+          <p className="detail-impact-note">
+            Estimated monthly cost for this configuration: ${configuredCost.min}–${configuredCost.max}
+          </p>
         </div>
       </section>
 
@@ -481,10 +601,34 @@ export function TemplateDetailClient({ template }: TemplateDetailClientProps) {
     Object.fromEntries(template.parameters.map((p) => [p.id, p.default]))
   );
   const [doneOutcome, setDoneOutcome] = useState<DoneOutcome>('success');
+  const [blockedMessage, setBlockedMessage] = useState('');
 
   const handleParamChange = (id: string, value: string) => {
+    const templateRules = constraintRulesByTemplate[template.id] ?? {};
+    const rule = templateRules[id];
+    if (rule && rule.blockedValues.includes(value)) {
+      const suffix = rule.suggestedAlternative
+        ? ` Recommended alternative: ${rule.suggestedAlternative}.`
+        : rule.exceptionPath
+          ? ` ${rule.exceptionPath}`
+          : '';
+      setBlockedMessage(`${rule.explanation}${suffix}`);
+      return;
+    }
+
+    setBlockedMessage('');
     setParamValues((prev: Record<string, string>) => ({ ...prev, [id]: value }));
   };
+
+  const handleOutOfRangeAttempt = (id: string) => {
+    const param = template.parameters.find((entry) => entry.id === id.replace('custom-', ''));
+    const explanation = param?.label
+      ? `The selected value is outside allowed values for ${param.label}. Choose one of the approved options or submit a governed exception request.`
+      : 'The selected value is outside policy-allowed values.';
+    setBlockedMessage(explanation);
+  };
+
+  const configuredCost = useMemo(() => estimateConfiguredCost(template, paramValues), [paramValues, template]);
 
   const handleProvision = () => {
     const outcome: DoneOutcome = template.governanceState === 'approved' ? 'success' : 'pending-approval';
@@ -498,6 +642,22 @@ export function TemplateDetailClient({ template }: TemplateDetailClientProps) {
         <Link href="/templates" className="catalog-back-link">
           ← Templates
         </Link>
+        <div className="template-step-actions">
+          <button
+            type="button"
+            className={`incident-button secondary ${step === 'overview' ? 'active' : ''}`}
+            onClick={() => setStep('overview')}
+          >
+            Inspect
+          </button>
+          <button
+            type="button"
+            className="incident-button"
+            onClick={() => setStep(step === 'done' ? 'overview' : 'configure')}
+          >
+            Configure
+          </button>
+        </div>
         <div className="pill-row">
           <span className="pill env-pill">{template.provider}</span>
           <span className="pill env-pill">{workloadLabels[template.type]}</span>
@@ -546,6 +706,9 @@ export function TemplateDetailClient({ template }: TemplateDetailClientProps) {
                 template={template}
                 paramValues={paramValues}
                 onParamChange={handleParamChange}
+                onOutOfRangeAttempt={handleOutOfRangeAttempt}
+                blockedMessage={blockedMessage}
+                configuredCost={configuredCost}
                 onBack={() => setStep('overview')}
                 onNext={() => setStep('review')}
               />
@@ -554,6 +717,7 @@ export function TemplateDetailClient({ template }: TemplateDetailClientProps) {
               <ReviewStep
                 template={template}
                 paramValues={paramValues}
+                configuredCost={configuredCost}
                 onBack={() => setStep('configure')}
                 onProvision={handleProvision}
               />
