@@ -52,7 +52,14 @@ function ApplicationInsightItem({
 
 export function ApplicationInsights({ insights, onAction }: ApplicationInsightsProps) {
   if (insights.length === 0) {
-    return null;
+    return (
+      <section className="application-insights" aria-label="Application insights">
+        <p className="application-insights-kicker">Application insights</p>
+        <p className="application-insights-empty">
+          No insights at this time. All signals are within normal thresholds.
+        </p>
+      </section>
+    );
   }
 
   return (

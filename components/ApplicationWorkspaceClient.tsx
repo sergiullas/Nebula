@@ -144,6 +144,50 @@ const createAiResponse = (
   return aiReply('I cannot answer that in this context. Try one of the suggested prompts.');
 };
 
+const getModalContent = (
+  action: string,
+  appName: string,
+  environment: string,
+) => {
+  if (action === 'Roll back deployment') {
+    return {
+      title: 'Roll back deployment',
+      summary: `This will revert ${appName} in ${environment} to the previous stable version.`,
+      consequence: 'The current deployment will be replaced. This action is logged and attributable.',
+      ctaLabel: 'Confirm rollback',
+      isDestructive: true,
+    };
+  }
+
+  if (action === 'Jump to logs & metrics') {
+    return {
+      title: 'Open logs & metrics',
+      summary: `Navigate to the Logs & metrics tab for ${appName}.`,
+      consequence: null,
+      ctaLabel: 'Open',
+      isDestructive: false,
+    };
+  }
+
+  if (action === 'Open AI companion') {
+    return {
+      title: 'Open AI companion',
+      summary: `Open the AI companion scoped to ${appName}.`,
+      consequence: null,
+      ctaLabel: 'Open',
+      isDestructive: false,
+    };
+  }
+
+  return {
+    title: action,
+    summary: `${action} will run for ${appName} in ${environment}.`,
+    consequence: null,
+    ctaLabel: 'Confirm',
+    isDestructive: false,
+  };
+};
+
 export function ApplicationWorkspaceClient({
   application,
   logsMetrics,
@@ -321,6 +365,9 @@ export function ApplicationWorkspaceClient({
                 Review config
               </button>
             </div>
+            {actionStatus === 'completed' && actionFeedback && (
+              <p className="incident-feedback">{actionFeedback}</p>
+            )}
           </section>
         ) : (
           <section className="status-banner">
@@ -470,7 +517,9 @@ export function ApplicationWorkspaceClient({
           </section>
         )}
 
-        {actionFeedback && <p className="action-feedback">{actionFeedback}</p>}
+        {actionFeedback && actionStatus === 'completed' && pendingAction !== 'Roll back deployment' && (
+          <p className="action-feedback">{actionFeedback}</p>
+        )}
         {auditTrail.length > 0 && <p className="action-feedback">Audit: {auditTrail[0]}</p>}
       </div>
 
@@ -535,31 +584,59 @@ export function ApplicationWorkspaceClient({
         </div>
       </aside>
 
-      {pendingAction && (
-        <section className="confirm-overlay" role="dialog" aria-label="Confirm action">
-          <div className="confirm-modal">
-            <h2>Confirm action</h2>
-            <p>{pendingAction} will run for this workspace context.</p>
-            <p>
-              <strong>Application:</strong> {application.name}
-            </p>
-            <p>
-              <strong>Environment:</strong> {currentEnvironment}
-            </p>
-            <p>
-              <strong>Actor:</strong> Devin
-            </p>
-            <div className="confirm-actions">
-              <button type="button" className="incident-button" onClick={confirmAction}>
-                Confirm
-              </button>
-              <button type="button" className="incident-button secondary" onClick={() => setPendingAction(null)}>
-                Cancel
-              </button>
+      {pendingAction && (() => {
+        const modal = getModalContent(
+          pendingAction,
+          application.name,
+          currentEnvironment,
+        );
+        return (
+          <section
+            className="confirm-overlay"
+            role="dialog"
+            aria-modal="true"
+            aria-label={modal.title}
+          >
+            <div className={`confirm-modal ${modal.isDestructive ? 'confirm-modal--destructive' : ''}`}>
+              <h2 className="confirm-modal__title">{modal.title}</h2>
+              <p className="confirm-modal__summary">{modal.summary}</p>
+              {modal.consequence && (
+                <p className="confirm-modal__consequence">{modal.consequence}</p>
+              )}
+              <div className="confirm-modal__meta">
+                <div className="confirm-modal__meta-row">
+                  <span className="confirm-modal__meta-label">Application</span>
+                  <span className="confirm-modal__meta-value">{application.name}</span>
+                </div>
+                <div className="confirm-modal__meta-row">
+                  <span className="confirm-modal__meta-label">Environment</span>
+                  <span className="confirm-modal__meta-value">{currentEnvironment}</span>
+                </div>
+                <div className="confirm-modal__meta-row">
+                  <span className="confirm-modal__meta-label">Confirmed by</span>
+                  <span className="confirm-modal__meta-value">Devin</span>
+                </div>
+              </div>
+              <div className="confirm-actions">
+                <button
+                  type="button"
+                  className={modal.isDestructive ? 'incident-button' : 'incident-button secondary'}
+                  onClick={confirmAction}
+                >
+                  {modal.ctaLabel}
+                </button>
+                <button
+                  type="button"
+                  className="incident-button secondary"
+                  onClick={() => setPendingAction(null)}
+                >
+                  Cancel
+                </button>
+              </div>
             </div>
-          </div>
-        </section>
-      )}
+          </section>
+        );
+      })()}
     </section>
   );
 }
