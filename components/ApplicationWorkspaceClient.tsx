@@ -434,6 +434,12 @@ export function ApplicationWorkspaceClient({
               <h2 className="section-title">Service dependencies</h2>
               <div className="toggle-row">
                 <Link
+                  href="/templates"
+                  className="incident-button secondary"
+                >
+                  Browse Templates
+                </Link>
+                <Link
                   href={`/app/${application.id}/catalog`}
                   className="incident-button add-service-cta"
                 >
@@ -441,23 +447,26 @@ export function ApplicationWorkspaceClient({
                 </Link>
               </div>
             </div>
+            <p className="placeholder muted">
+              Templates provision a governed set of services into {application.name} — a faster starting point than adding services individually.
+            </p>
             <div className="dependency-list">
-                {dependencies.map((dependency) => (
-                  <article key={dependency.name} className="dependency-row">
-                    <span className={`dependency-row__dot dependency-row__dot--${dependencyClass[dependency.health]}`} />
-                    <div className="dependency-main">
-                      <p className="dependency-row__name">{dependency.name}</p>
-                      <p className="dependency-row__detail">{dependency.metadata}</p>
-                    </div>
-                    <div className="dependency-row__badges">
-                      <Badge variant={dependency.provider === 'AWS' ? 'aws' : dependency.provider === 'GCP' ? 'gcp' : 'unknown'}>
-                        {dependency.provider}
-                      </Badge>
-                      <Badge variant={dependencyClass[dependency.health]}>{dependency.health}</Badge>
-                    </div>
-                  </article>
-                ))}
-              </div>
+              {dependencies.map((dependency) => (
+                <article key={dependency.name} className="dependency-row">
+                  <span className={`dependency-row__dot dependency-row__dot--${dependencyClass[dependency.health]}`} />
+                  <div className="dependency-main">
+                    <p className="dependency-row__name">{dependency.name}</p>
+                    <p className="dependency-row__detail">{dependency.metadata}</p>
+                  </div>
+                  <div className="dependency-row__badges">
+                    <Badge variant={dependency.provider === 'AWS' ? 'aws' : dependency.provider === 'GCP' ? 'gcp' : 'unknown'}>
+                      {dependency.provider}
+                    </Badge>
+                    <Badge variant={dependencyClass[dependency.health]}>{dependency.health}</Badge>
+                  </div>
+                </article>
+              ))}
+            </div>
           </section>
         )}
 

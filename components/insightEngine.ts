@@ -96,7 +96,6 @@ const sourceServiceId = (source: string) => {
   return serviceId;
 };
 
-
 const findServiceNameById = (catalogServices: CatalogService[], serviceId?: string) => {
   if (!serviceId) {
     return undefined;

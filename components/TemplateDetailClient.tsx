@@ -10,8 +10,8 @@ import {
   TemplateWorkloadType,
 } from '@/components/types';
 
-type FlowStep = 'overview' | 'configure' | 'review' | 'done';
-type DoneOutcome = 'success' | 'pending-approval';
+type FlowStep = 'inspect' | 'configure' | 'review' | 'done';
+type DoneOutcome = 'success' | 'pending-approval' | 'blocked-by-policy';
 
 // ── Shared lookup tables ────────────────────────────────────
 
@@ -54,13 +54,13 @@ const complexityLabel: Record<TemplateComplexity, string> = {
 };
 
 const STEP_LABELS: Record<FlowStep, string> = {
-  overview: 'Inspect',
+  inspect: 'Inspect',
   configure: 'Configure',
   review: 'Review',
   done: 'Done',
 };
 
-const STEPS: FlowStep[] = ['overview', 'configure', 'review'];
+const STEPS: FlowStep[] = ['inspect', 'configure', 'review'];
 
 type ConstraintRule = {
   blockedValues: string[];
@@ -111,12 +111,12 @@ const estimateConfiguredCost = (template: CloudTemplate, paramValues: Record<str
 
 // ── Step components ─────────────────────────────────────────
 
-type OverviewStepProps = {
+type InspectStepProps = {
   template: CloudTemplate;
   onNext: () => void;
 };
 
-function OverviewStep({ template, onNext }: OverviewStepProps) {
+function InspectStep({ template, onNext }: InspectStepProps) {
   return (
     <>
       <div className="detail-summary-card">
@@ -407,14 +407,20 @@ function ReviewStep({ template, paramValues, configuredCost, onBack, onProvision
           ← Back
         </button>
         <button type="button" className="provision-cta-button template-step-cta" onClick={onProvision}>
-          {template.governanceState === 'approved' ? 'Provision template' : 'Submit approval request'}
+          {template.governanceState === 'approved'
+            ? 'Provision template'
+            : template.governanceState === 'includes-restricted'
+              ? 'Submit exception request'
+              : 'Submit approval request'}
         </button>
       </div>
 
       <p className="provision-cta-note" style={{ marginTop: 8 }}>
         {template.governanceState === 'approved'
           ? 'All services are pre-approved · Provisioning begins immediately'
-          : `Approval required for: ${template.requiresApprovalElements.join(', ')}`}
+          : template.governanceState === 'includes-restricted'
+            ? `Restricted services present: ${template.restrictedOptions.join(', ')}`
+            : `Approval required for: ${template.requiresApprovalElements.join(', ')}`}
       </p>
     </>
   );
@@ -446,6 +452,41 @@ function DoneStep({ template, outcome }: DoneStepProps) {
             style={{ display: 'inline-block', textDecoration: 'none', marginTop: 12 }}
           >
             Back to Templates
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
+  if (outcome === 'blocked-by-policy') {
+    return (
+      <div className="template-done-view">
+        <div className="provision-outcome provision-outcome-exception template-done-card">
+          <p className="provision-outcome-title">Provisioning blocked by policy</p>
+          <p className="provision-outcome-body">
+            {template.name} includes services that cannot be provisioned under current platform
+            policy. No compliant configuration path is available without a governed exception.
+          </p>
+          {template.restrictedOptions.length > 0 && (
+            <div className="template-done-resources">
+              {template.restrictedOptions.map((opt) => (
+                <p key={opt} className="template-done-resource-item">Restricted: {opt}</p>
+              ))}
+            </div>
+          )}
+          <p className="provision-outcome-body" style={{ marginTop: 8 }}>
+            Policy source{template.policySources.length !== 1 ? 's' : ''}: {template.policySources.join(' · ')}
+          </p>
+          <p className="provision-outcome-body" style={{ marginTop: 8 }}>
+            To proceed, request a governed exception through the Cloud Platform review workflow,
+            or choose a template that does not include restricted services.
+          </p>
+          <Link
+            href="/templates"
+            className="incident-button"
+            style={{ display: 'inline-block', textDecoration: 'none', marginTop: 12 }}
+          >
+            Browse compliant templates
           </Link>
         </div>
       </div>
@@ -596,7 +637,7 @@ type TemplateDetailClientProps = {
 };
 
 export function TemplateDetailClient({ template }: TemplateDetailClientProps) {
-  const [step, setStep] = useState<FlowStep>('overview');
+  const [step, setStep] = useState<FlowStep>('inspect');
   const [paramValues, setParamValues] = useState<Record<string, string>>(
     Object.fromEntries(template.parameters.map((p) => [p.id, p.default]))
   );
@@ -617,7 +658,7 @@ export function TemplateDetailClient({ template }: TemplateDetailClientProps) {
     }
 
     setBlockedMessage('');
-    setParamValues((prev: Record<string, string>) => ({ ...prev, [id]: value }));
+    setParamValues((prev) => ({ ...prev, [id]: value }));
   };
 
   const handleOutOfRangeAttempt = (id: string) => {
@@ -631,7 +672,14 @@ export function TemplateDetailClient({ template }: TemplateDetailClientProps) {
   const configuredCost = useMemo(() => estimateConfiguredCost(template, paramValues), [paramValues, template]);
 
   const handleProvision = () => {
-    const outcome: DoneOutcome = template.governanceState === 'approved' ? 'success' : 'pending-approval';
+    let outcome: DoneOutcome;
+    if (template.governanceState === 'approved') {
+      outcome = 'success';
+    } else if (template.governanceState === 'includes-restricted') {
+      outcome = 'blocked-by-policy';
+    } else {
+      outcome = 'pending-approval';
+    }
     setDoneOutcome(outcome);
     setStep('done');
   };
@@ -645,15 +693,15 @@ export function TemplateDetailClient({ template }: TemplateDetailClientProps) {
         <div className="template-step-actions">
           <button
             type="button"
-            className={`incident-button secondary ${step === 'overview' ? 'active' : ''}`}
-            onClick={() => setStep('overview')}
+            className={`incident-button secondary ${step === 'inspect' ? 'active' : ''}`}
+            onClick={() => setStep('inspect')}
           >
             Inspect
           </button>
           <button
             type="button"
             className={`incident-button ${step === 'configure' || step === 'review' ? 'active' : ''}`}
-            onClick={() => setStep(step === 'done' ? 'overview' : 'configure')}
+            onClick={() => setStep(step === 'done' ? 'inspect' : 'configure')}
           >
             Configure
           </button>
@@ -695,8 +743,8 @@ export function TemplateDetailClient({ template }: TemplateDetailClientProps) {
       {step !== 'done' && (
         <div className="detail-layout">
           <div className="detail-main">
-            {step === 'overview' && (
-              <OverviewStep
+            {step === 'inspect' && (
+              <InspectStep
                 template={template}
                 onNext={() => setStep('configure')}
               />
@@ -709,7 +757,7 @@ export function TemplateDetailClient({ template }: TemplateDetailClientProps) {
                 onOutOfRangeAttempt={handleOutOfRangeAttempt}
                 blockedMessage={blockedMessage}
                 configuredCost={configuredCost}
-                onBack={() => setStep('overview')}
+                onBack={() => setStep('inspect')}
                 onNext={() => setStep('review')}
               />
             )}
