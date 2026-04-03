@@ -652,7 +652,7 @@ export function TemplateDetailClient({ template }: TemplateDetailClientProps) {
           </button>
           <button
             type="button"
-            className="incident-button"
+            className={`incident-button ${step === 'configure' || step === 'review' ? 'active' : ''}`}
             onClick={() => setStep(step === 'done' ? 'overview' : 'configure')}
           >
             Configure
