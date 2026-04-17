@@ -20,28 +20,29 @@ type PendingAction = {
 type NavItem = {
   href?: string;
   label: string;
+  icon: string;
   isPlaceholder?: boolean;
   matchPaths?: string[];
 };
 
 const primaryNavItems: NavItem[] = [
-  { href: '/', label: 'Home', matchPaths: ['/', '/app'] },
-  { href: '/catalog', label: 'Catalog', matchPaths: ['/catalog'] },
-  { label: 'Governance / Insights', isPlaceholder: true },
-  { label: 'Activity / Actions', isPlaceholder: true },
+  { href: '/', label: 'Home', icon: 'home', matchPaths: ['/', '/app'] },
+  { href: '/catalog', label: 'Catalog', icon: 'inventory_2', matchPaths: ['/catalog'] },
+  { label: 'Governance / Insights', icon: 'policy', isPlaceholder: true },
+  { label: 'Activity / Actions', icon: 'checklist', isPlaceholder: true },
 ];
 
 const secondaryNavItems: NavItem[] = [
-  { label: 'My Group', isPlaceholder: true },
-  { label: 'APIs', isPlaceholder: true },
-  { label: 'Docs', isPlaceholder: true },
-  { label: 'Create', isPlaceholder: true },
-  { label: 'Explore', isPlaceholder: true },
-  { label: 'Tech Radar', isPlaceholder: true },
-  { label: 'Cost Insights', isPlaceholder: true },
-  { label: 'GraphiQL', isPlaceholder: true },
-  { label: 'Notifications', isPlaceholder: true },
-  { label: 'Settings', isPlaceholder: true },
+  { label: 'My Group', icon: 'groups', isPlaceholder: true },
+  { label: 'APIs', icon: 'api', isPlaceholder: true },
+  { label: 'Docs', icon: 'description', isPlaceholder: true },
+  { label: 'Create', icon: 'add_circle', isPlaceholder: true },
+  { label: 'Explore', icon: 'travel_explore', isPlaceholder: true },
+  { label: 'Tech Radar', icon: 'radar', isPlaceholder: true },
+  { label: 'Cost Insights', icon: 'savings', isPlaceholder: true },
+  { label: 'GraphiQL', icon: 'hub', isPlaceholder: true },
+  { label: 'Notifications', icon: 'notifications', isPlaceholder: true },
+  { label: 'Settings', icon: 'settings', isPlaceholder: true },
 ];
 
 type SidebarAccountPanelProps = {
@@ -213,7 +214,7 @@ export function AppShell({ children, currentPath }: AppShellProps) {
       <aside className={`sidebar ${isSidebarCollapsed ? 'collapsed' : ''}`}>
         <div className="sidebar-top">
           <div className="brand-row">
-            <div className="brand-mark" aria-hidden="true">☁</div>
+            <div className="brand-mark material-symbols-outlined" aria-hidden="true">cloud</div>
             {!isSidebarCollapsed && <div className="brand">Nebula</div>}
             <button
               type="button"
@@ -221,12 +222,15 @@ export function AppShell({ children, currentPath }: AppShellProps) {
               onClick={() => setIsSidebarCollapsed((value) => !value)}
               aria-label={isSidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
             >
-              {isSidebarCollapsed ? '›' : '‹'}
+              <span className="material-symbols-outlined" aria-hidden="true">
+                {isSidebarCollapsed ? 'chevron_right' : 'chevron_left'}
+              </span>
             </button>
           </div>
 
           {!isSidebarCollapsed && (
             <div className="sidebar-search" aria-hidden="true">
+              <span className="material-symbols-outlined sidebar-search-icon" aria-hidden="true">search</span>
               <input type="text" value="" readOnly placeholder="Search" className="sidebar-search-input" />
               <span className="sidebar-search-hint">⌘K</span>
             </div>
@@ -237,7 +241,8 @@ export function AppShell({ children, currentPath }: AppShellProps) {
               if (item.isPlaceholder) {
                 return (
                   <button type="button" className="nav-link nav-link--placeholder" key={item.label} disabled>
-                    {isSidebarCollapsed ? item.label.charAt(0) : item.label}
+                    <span className="material-symbols-outlined nav-link-icon" aria-hidden="true">{item.icon}</span>
+                    {!isSidebarCollapsed && <span>{item.label}</span>}
                   </button>
                 );
               }
@@ -250,7 +255,8 @@ export function AppShell({ children, currentPath }: AppShellProps) {
                   aria-label={item.label}
                   title={item.label}
                 >
-                  {isSidebarCollapsed ? item.label.charAt(0) : item.label}
+                  <span className="material-symbols-outlined nav-link-icon" aria-hidden="true">{item.icon}</span>
+                  {!isSidebarCollapsed && <span>{item.label}</span>}
                 </Link>
               );
             })}
@@ -261,7 +267,8 @@ export function AppShell({ children, currentPath }: AppShellProps) {
           <nav className="nav-list nav-list--secondary" aria-label="Secondary navigation">
             {secondaryNavItems.map((item) => (
               <button type="button" className="nav-link nav-link--placeholder" key={item.label} disabled>
-                {isSidebarCollapsed ? item.label.charAt(0) : item.label}
+                <span className="material-symbols-outlined nav-link-icon" aria-hidden="true">{item.icon}</span>
+                {!isSidebarCollapsed && <span>{item.label}</span>}
               </button>
             ))}
           </nav>
@@ -269,7 +276,12 @@ export function AppShell({ children, currentPath }: AppShellProps) {
 
         <div className="sidebar-bottom">
           <label className="dark-mode-row" htmlFor="dark-mode-toggle">
-            {!isSidebarCollapsed && <span>Dark mode</span>}
+            {!isSidebarCollapsed && (
+              <span className="dark-mode-label">
+                <span className="material-symbols-outlined" aria-hidden="true">dark_mode</span>
+                <span>Dark mode</span>
+              </span>
+            )}
             <button
               type="button"
               id="dark-mode-toggle"
