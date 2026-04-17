@@ -17,29 +17,62 @@ type PendingAction = {
   description: string;
 };
 
-const navItems = [
-  { href: '/', label: 'My Applications' },
-  { href: '/catalog', label: 'Catalog' },
-  { href: '/templates', label: 'Templates' },
+type NavItem = {
+  href?: string;
+  label: string;
+  isPlaceholder?: boolean;
+  matchPaths?: string[];
+};
+
+const primaryNavItems: NavItem[] = [
+  { href: '/', label: 'Home', matchPaths: ['/', '/app'] },
+  { href: '/catalog', label: 'Catalog', matchPaths: ['/catalog'] },
+  { label: 'Governance / Insights', isPlaceholder: true },
+  { label: 'Activity / Actions', isPlaceholder: true },
+];
+
+const secondaryNavItems: NavItem[] = [
+  { label: 'My Group', isPlaceholder: true },
+  { label: 'APIs', isPlaceholder: true },
+  { label: 'Docs', isPlaceholder: true },
+  { label: 'Create', isPlaceholder: true },
+  { label: 'Explore', isPlaceholder: true },
+  { label: 'Tech Radar', isPlaceholder: true },
+  { label: 'Cost Insights', isPlaceholder: true },
+  { label: 'GraphiQL', isPlaceholder: true },
+  { label: 'Notifications', isPlaceholder: true },
+  { label: 'Settings', isPlaceholder: true },
 ];
 
 type SidebarAccountPanelProps = {
   name: string;
   role?: string;
+  isCollapsed: boolean;
 };
 
-function SidebarAccountPanel({ name, role }: SidebarAccountPanelProps) {
+function SidebarAccountPanel({ name, role, isCollapsed }: SidebarAccountPanelProps) {
   return (
     <button type="button" className="sidebar-account-panel" aria-label={`Signed-in account: ${name}`}>
       <span className="sidebar-account-avatar" aria-hidden="true">{name.charAt(0)}</span>
-      <span className="sidebar-account-meta">
-        <span className="sidebar-account-name">{name}</span>
-        {role ? <span className="sidebar-account-role">{role}</span> : null}
-      </span>
-      <span className="sidebar-account-caret" aria-hidden="true">▾</span>
+      {!isCollapsed && (
+        <span className="sidebar-account-meta">
+          <span className="sidebar-account-name">{name}</span>
+          {role ? <span className="sidebar-account-role">{role}</span> : null}
+        </span>
+      )}
+      {!isCollapsed && <span className="sidebar-account-caret" aria-hidden="true">▾</span>}
     </button>
   );
 }
+
+const isNavItemActive = (activePath: string, item: NavItem) => {
+  if (!item.href) {
+    return false;
+  }
+
+  const paths = item.matchPaths ?? [item.href];
+  return paths.some((path) => (path === '/' ? activePath === '/' : activePath.startsWith(path)));
+};
 
 export function AppShell({ children, currentPath }: AppShellProps) {
   const pathname = usePathname();
@@ -49,6 +82,8 @@ export function AppShell({ children, currentPath }: AppShellProps) {
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [pendingAction, setPendingAction] = useState<PendingAction | null>(null);
   const [auditTrail, setAuditTrail] = useState<string[]>([]);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const [isDarkMode, setIsDarkMode] = useState(false);
 
   const activePath = pathname ?? currentPath ?? '/';
   const activeApp = useMemo(() => {
@@ -105,6 +140,10 @@ export function AppShell({ children, currentPath }: AppShellProps) {
   useEffect(() => {
     setSelectedIndex(0);
   }, [query, isPaletteOpen]);
+
+  useEffect(() => {
+    document.documentElement.dataset.theme = isDarkMode ? 'dark' : 'light';
+  }, [isDarkMode]);
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
@@ -170,20 +209,79 @@ export function AppShell({ children, currentPath }: AppShellProps) {
   };
 
   return (
-    <div className="portal-shell">
-      <aside className="sidebar">
-        <div>
-          <div className="brand">Cloud Brokerage Portal</div>
+    <div className={`portal-shell ${isSidebarCollapsed ? 'portal-shell--collapsed' : ''}`}>
+      <aside className={`sidebar ${isSidebarCollapsed ? 'collapsed' : ''}`}>
+        <div className="sidebar-top">
+          <div className="brand-row">
+            <div className="brand-mark" aria-hidden="true">☁</div>
+            {!isSidebarCollapsed && <div className="brand">Nebula</div>}
+            <button
+              type="button"
+              className="sidebar-collapse-toggle"
+              onClick={() => setIsSidebarCollapsed((value) => !value)}
+              aria-label={isSidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+            >
+              {isSidebarCollapsed ? '›' : '‹'}
+            </button>
+          </div>
+
+          {!isSidebarCollapsed && (
+            <div className="sidebar-search" aria-hidden="true">
+              <input type="text" value="" readOnly placeholder="Search" className="sidebar-search-input" />
+              <span className="sidebar-search-hint">⌘K</span>
+            </div>
+          )}
+
           <nav className="nav-list" aria-label="Primary navigation">
-            {navItems.map((item) => (
-              <Link className={`nav-link ${activePath === item.href ? 'active' : ''}`} key={item.href} href={item.href}>
-                {item.label}
-              </Link>
+            {primaryNavItems.map((item) => {
+              if (item.isPlaceholder) {
+                return (
+                  <button type="button" className="nav-link nav-link--placeholder" key={item.label} disabled>
+                    {isSidebarCollapsed ? item.label.charAt(0) : item.label}
+                  </button>
+                );
+              }
+
+              return (
+                <Link
+                  className={`nav-link ${isNavItemActive(activePath, item) ? 'active' : ''}`}
+                  key={item.href}
+                  href={item.href ?? '#'}
+                  aria-label={item.label}
+                  title={item.label}
+                >
+                  {isSidebarCollapsed ? item.label.charAt(0) : item.label}
+                </Link>
+              );
+            })}
+          </nav>
+
+          <div className="nav-section-divider" />
+
+          <nav className="nav-list nav-list--secondary" aria-label="Secondary navigation">
+            {secondaryNavItems.map((item) => (
+              <button type="button" className="nav-link nav-link--placeholder" key={item.label} disabled>
+                {isSidebarCollapsed ? item.label.charAt(0) : item.label}
+              </button>
             ))}
           </nav>
         </div>
 
-        <SidebarAccountPanel name="Devin" role="Application Engineer" />
+        <div className="sidebar-bottom">
+          <label className="dark-mode-row" htmlFor="dark-mode-toggle">
+            {!isSidebarCollapsed && <span>Dark mode</span>}
+            <button
+              type="button"
+              id="dark-mode-toggle"
+              className={`switch ${isDarkMode ? 'is-on' : ''}`}
+              aria-pressed={isDarkMode}
+              onClick={() => setIsDarkMode((value) => !value)}
+            >
+              <span className="switch-thumb" />
+            </button>
+          </label>
+          <SidebarAccountPanel name="Devin" role="Application Engineer" isCollapsed={isSidebarCollapsed} />
+        </div>
       </aside>
 
       <div className="screen-shell">

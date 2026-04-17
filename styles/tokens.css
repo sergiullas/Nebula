@@ -1,29 +1,35 @@
-:root {
+:root,
+:root[data-theme='light'] {
+  /* ─── Brand ───────────────────────────────────────── */
+  --brand-primary:       #005288;
+  --brand-primary-hover: #0c5f96;
+  --brand-primary-soft:  #e6f0f7;
+  --focus-ring:          #005288;
 
   /* ─── Color: Text ─────────────────────────────────── */
-  --text-primary:     #1a1a1a;
-  --text-secondary:   #5f5e5a;
-  --text-tertiary:    #6b6a66;
-  --text-danger:      #a32d2d;
-  --text-success:     #27500a;
-  --text-warning:     #633806;
+  --text-primary:     #1b2430;
+  --text-secondary:   #4f5d6f;
+  --text-tertiary:    #6c7a8a;
+  --text-danger:      #9f2b2b;
+  --text-success:     #1f5f33;
+  --text-warning:     #7a4a00;
   --text-info:        #0c447c;
 
   /* ─── Color: Background ───────────────────────────── */
   --bg-primary:       #ffffff;
-  --bg-secondary:     #f5f4f0;
-  --bg-tertiary:      #eeecea;
+  --bg-secondary:     #f6f8fa;
+  --bg-tertiary:      #eef2f6;
   --bg-danger:        #fcebeb;
-  --bg-success:       #eaf3de;
+  --bg-success:       #e7f5eb;
   --bg-warning:       #faeeda;
   --bg-info:          #e6f1fb;
 
   /* ─── Color: Border ───────────────────────────────── */
-  --border-default:   rgba(0, 0, 0, 0.12);
-  --border-medium:    rgba(0, 0, 0, 0.22);
-  --border-strong:    rgba(0, 0, 0, 0.35);
+  --border-default:   #d5dce4;
+  --border-medium:    #bcc7d4;
+  --border-strong:    #8ea0b4;
   --border-danger:    #f09595;
-  --border-success:   #97c459;
+  --border-success:   #86c89c;
   --border-warning:   #fac775;
   --border-info:      #85b7eb;
 
@@ -36,9 +42,9 @@
   --provider-gcp-border:  #85b7eb;
 
   /* ─── Color: Health ───────────────────────────────── */
-  --health-healthy:   #639922;
-  --health-degraded:  #ba7517;
-  --health-critical:  #e24b4a;
+  --health-healthy:   #2e7d32;
+  --health-degraded:  #c27a0a;
+  --health-critical:  #d64545;
   --health-unknown:   #b4b2a9;
 
   /* ─── Color: Incident strip ───────────────────────── */
@@ -50,49 +56,48 @@
   --incident-btn-text:    #fcebeb;
 
   /* ─── Typography ──────────────────────────────────── */
-  --font-sans:        -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-sans:        'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   --font-mono:        'SF Mono', 'Fira Code', monospace;
 
-  --text-xs:    13px;
+  --text-xs:    12px;
   --text-sm:    14px;
   --text-md:    15px;
   --text-lg:    16px;
   --text-xl:    18px;
-  --text-2xl:   22px;
+  --text-2xl:   21px;
   --text-3xl:   24px;
 
   --weight-regular: 400;
   --weight-medium:  500;
-  /* Never use 600 or 700 */
 
-  --leading-tight:  1.4;
-  --leading-normal: 1.6;
-  --leading-loose:  1.8;
+  --leading-tight:  1.35;
+  --leading-normal: 1.5;
+  --leading-loose:  1.7;
 
   --tracking-wide:  0.04em;
   --tracking-wider: 0.06em;
 
-  /* ─── Spacing ──────────────────────────────────────── */
+  /* ─── Spacing (dense enterprise baseline) ─────────── */
   --space-0:   0;
   --space-1:   4px;
-  --space-2:   8px;
-  --space-3:   12px;
-  --space-4:   16px;
-  --space-5:   20px;
-  --space-6:   24px;
-  --space-7:   32px;
-  --space-8:   40px;
-  --space-9:   48px;
+  --space-2:   6px;
+  --space-3:   10px;
+  --space-4:   14px;
+  --space-5:   18px;
+  --space-6:   22px;
+  --space-7:   28px;
+  --space-8:   34px;
+  --space-9:   42px;
 
   /* ─── Border radius ────────────────────────────────── */
   --radius-sm:   4px;
   --radius-md:   8px;
   --radius-lg:   12px;
-  --radius-pill: 20px;
+  --radius-pill: 999px;
 
   /* ─── Borders ─────────────────────────────────────── */
-  --border-width:       0.5px;
-  --border-width-focus: 2px;  /* active tab indicator only */
+  --border-width:       1px;
+  --border-width-focus: 2px;
 
   /* ─── Transitions ─────────────────────────────────── */
   --transition-fast:   0.15s ease;
@@ -103,5 +108,54 @@
   --z-drawer:  100;
   --z-palette: 200;
   --z-overlay: 300;
+}
 
+:root[data-theme='dark'] {
+  --brand-primary:       #3c8ec5;
+  --brand-primary-hover: #5aa2d3;
+  --brand-primary-soft:  #123752;
+  --focus-ring:          #77b5de;
+
+  --text-primary:     #e6edf4;
+  --text-secondary:   #b8c5d3;
+  --text-tertiary:    #9aa9b8;
+  --text-danger:      #ffb3b3;
+  --text-success:     #9ce8b4;
+  --text-warning:     #ffd38d;
+  --text-info:        #9eceff;
+
+  --bg-primary:       #111827;
+  --bg-secondary:     #182235;
+  --bg-tertiary:      #0e1623;
+  --bg-danger:        #402428;
+  --bg-success:       #1d3325;
+  --bg-warning:       #3d301f;
+  --bg-info:          #1b3045;
+
+  --border-default:   #304055;
+  --border-medium:    #42546c;
+  --border-strong:    #617894;
+  --border-danger:    #90505b;
+  --border-success:   #3f7b56;
+  --border-warning:   #8b6f3f;
+  --border-info:      #456a8d;
+
+  --provider-aws-bg:      #3d301f;
+  --provider-aws-text:    #ffd38d;
+  --provider-aws-border:  #8b6f3f;
+  --provider-gcp-bg:      #1b3045;
+  --provider-gcp-text:    #9eceff;
+  --provider-gcp-border:  #456a8d;
+
+  --health-healthy:   #66c281;
+  --health-degraded:  #ffc04f;
+  --health-critical:  #ff8b8b;
+  --health-unknown:   #7f8fa3;
+
+  --incident-bg:          #402428;
+  --incident-border:      #90505b;
+  --incident-text:        #ffd0d0;
+  --incident-text-muted:  #ffb4b4;
+  --incident-btn-bg:      #b94f4f;
+  --incident-btn-text:    #fff0f0;
 }
