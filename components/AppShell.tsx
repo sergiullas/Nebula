@@ -17,7 +17,6 @@ type NavItem = {
   href?: string;
   label: string;
   icon: string;
-  isPlaceholder?: boolean;
   matchPaths?: string[];
 };
 
