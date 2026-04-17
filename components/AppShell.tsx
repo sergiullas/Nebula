@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { ReactNode, useEffect, useMemo, useState } from 'react';
+import { ReactNode, useEffect, useMemo, useRef, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { mockApplications } from './data';
 import { buildSharedActions } from './actions';
@@ -43,6 +43,8 @@ const systemNavItems: NavItem[] = [
   { label: 'Settings', icon: 'settings', isPlaceholder: true },
 ];
 
+const createSubItems = ['Provision', 'Add Service', 'Use Template'];
+
 type SidebarAccountPanelProps = {
   name: string;
   role?: string;
@@ -83,6 +85,10 @@ export function AppShell({ children, currentPath }: AppShellProps) {
   const [auditTrail, setAuditTrail] = useState<string[]>([]);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState(false);
+  const [isCreateExpandedOpen, setIsCreateExpandedOpen] = useState(false);
+  const [isCreateFlyoutOpen, setIsCreateFlyoutOpen] = useState(false);
+  const createAnchorRef = useRef<HTMLButtonElement | null>(null);
+  const createFlyoutRef = useRef<HTMLDivElement | null>(null);
 
   const activePath = pathname ?? currentPath ?? '/';
   const activeApp = useMemo(() => {
@@ -145,6 +151,33 @@ export function AppShell({ children, currentPath }: AppShellProps) {
   }, [isDarkMode]);
 
   useEffect(() => {
+    if (!isCreateFlyoutOpen) {
+      return;
+    }
+
+    const onPointerDown = (event: MouseEvent) => {
+      const target = event.target as Node;
+      if (createAnchorRef.current?.contains(target) || createFlyoutRef.current?.contains(target)) {
+        return;
+      }
+
+      setIsCreateFlyoutOpen(false);
+    };
+
+    window.addEventListener('mousedown', onPointerDown);
+    return () => window.removeEventListener('mousedown', onPointerDown);
+  }, [isCreateFlyoutOpen]);
+
+  useEffect(() => {
+    if (!isCreateFlyoutOpen) {
+      return;
+    }
+
+    const firstItem = createFlyoutRef.current?.querySelector<HTMLButtonElement>('.create-subitem-button');
+    firstItem?.focus();
+  }, [isCreateFlyoutOpen]);
+
+  useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') {
         event.preventDefault();
@@ -205,6 +238,24 @@ export function AppShell({ children, currentPath }: AppShellProps) {
     }
 
     setPendingAction(null);
+  };
+
+  const handleCreateTrigger = () => {
+    if (isSidebarCollapsed) {
+      setIsCreateFlyoutOpen((current) => !current);
+      return;
+    }
+
+    setIsCreateExpandedOpen((current) => !current);
+  };
+
+  const onCreateTriggerKeyDown = (event: React.KeyboardEvent<HTMLButtonElement>) => {
+    if (event.key !== 'Enter' && event.key !== ' ') {
+      return;
+    }
+
+    event.preventDefault();
+    handleCreateTrigger();
   };
 
   return (
@@ -276,6 +327,59 @@ export function AppShell({ children, currentPath }: AppShellProps) {
 
             <div className="nav-section-divider" />
 
+            <div className="create-section">
+              {!isSidebarCollapsed && <p className="nav-section-title">Create</p>}
+              <button
+                ref={createAnchorRef}
+                type="button"
+                className="nav-link create-trigger"
+                onClick={handleCreateTrigger}
+                onKeyDown={onCreateTriggerKeyDown}
+                aria-expanded={isSidebarCollapsed ? isCreateFlyoutOpen : isCreateExpandedOpen}
+                aria-haspopup="menu"
+                title={isSidebarCollapsed ? 'Create' : undefined}
+              >
+                <span className="material-symbols-outlined nav-link-icon" aria-hidden="true">add</span>
+                {!isSidebarCollapsed && <span>Create</span>}
+                {!isSidebarCollapsed && (
+                  <span className="material-symbols-outlined create-chevron" aria-hidden="true">
+                    {isCreateExpandedOpen ? 'expand_less' : 'expand_more'}
+                  </span>
+                )}
+                {isSidebarCollapsed && <span className="create-tooltip">Create</span>}
+              </button>
+
+              {isSidebarCollapsed && isCreateFlyoutOpen && (
+                <div ref={createFlyoutRef} className="create-flyout" role="menu" aria-label="Create actions">
+                  {createSubItems.map((item) => (
+                    <button
+                      key={item}
+                      type="button"
+                      role="menuitem"
+                      className="create-subitem-button"
+                      onClick={() => setIsCreateFlyoutOpen(false)}
+                    >
+                      {item}
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              {!isSidebarCollapsed && (
+                <div className={`create-accordion ${isCreateExpandedOpen ? 'open' : ''}`}>
+                  <div className="create-accordion-inner">
+                    {createSubItems.map((item) => (
+                      <button key={item} type="button" className="create-subitem-button">
+                        {item}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="nav-section-divider" />
+
             <div>
               {!isSidebarCollapsed && <p className="nav-section-title">Supporting tools</p>}
               <nav className="nav-list" aria-label="Supporting tools navigation">
@@ -287,14 +391,6 @@ export function AppShell({ children, currentPath }: AppShellProps) {
                 ))}
               </nav>
             </div>
-
-            {!isSidebarCollapsed && (
-              <div className="provision-submenu" aria-hidden="true">
-                <p className="provision-submenu-title">Provision</p>
-                <p className="provision-submenu-item">Add service</p>
-                <p className="provision-submenu-item">Use template</p>
-              </div>
-            )}
 
             <div className="nav-section-divider" />
 
