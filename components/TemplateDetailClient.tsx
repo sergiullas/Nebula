@@ -9,6 +9,7 @@ import {
   TemplateGovernanceState,
   TemplateWorkloadType,
 } from '@/components/types';
+import { EXECUTION_ACTIONS, useActionExecution } from '@/components/execution';
 
 type FlowStep = 'inspect' | 'configure' | 'review' | 'done';
 type DoneOutcome = 'success' | 'pending-approval' | 'blocked-by-policy';
@@ -642,6 +643,7 @@ export function TemplateDetailClient({ template }: TemplateDetailClientProps) {
     Object.fromEntries(template.parameters.map((p) => [p.id, p.default]))
   );
   const [doneOutcome, setDoneOutcome] = useState<DoneOutcome>('success');
+  const { requestExecution } = useActionExecution();
   const [blockedMessage, setBlockedMessage] = useState('');
 
   const handleParamChange = (id: string, value: string) => {
@@ -672,16 +674,30 @@ export function TemplateDetailClient({ template }: TemplateDetailClientProps) {
   const configuredCost = useMemo(() => estimateConfiguredCost(template, paramValues), [paramValues, template]);
 
   const handleProvision = () => {
-    let outcome: DoneOutcome;
-    if (template.governanceState === 'approved') {
-      outcome = 'success';
-    } else if (template.governanceState === 'includes-restricted') {
-      outcome = 'blocked-by-policy';
-    } else {
-      outcome = 'pending-approval';
-    }
-    setDoneOutcome(outcome);
-    setStep('done');
+    requestExecution({
+      payload: {
+        actionType: EXECUTION_ACTIONS.USE_TEMPLATE,
+        target: template.name,
+        appId: 'template-catalog',
+        applicationName: 'Template Catalog',
+        provider: template.provider,
+        governanceState: template.governanceState,
+        templateName: template.name,
+        impactSummary: 'Apply template blueprint to provision managed resources.',
+      },
+      onComplete: (result) => {
+        let outcome: DoneOutcome;
+        if (result.status === 'failure' || template.governanceState === 'includes-restricted') {
+          outcome = 'blocked-by-policy';
+        } else if (template.governanceState === 'requires-approval') {
+          outcome = 'pending-approval';
+        } else {
+          outcome = 'success';
+        }
+        setDoneOutcome(outcome);
+        setStep('done');
+      },
+    });
   };
 
   return (

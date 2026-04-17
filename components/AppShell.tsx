@@ -6,38 +6,24 @@ import { usePathname, useRouter } from 'next/navigation';
 import { mockApplications } from './data';
 import { buildSharedActions } from './actions';
 import { Badge } from './Badge';
+import { EXECUTION_ACTIONS, useActionExecution } from './execution';
 
 type AppShellProps = {
   children: ReactNode;
   currentPath?: string;
 };
 
-type PendingAction = {
-  label: string;
-  description: string;
-};
-
 type NavItem = {
   href?: string;
   label: string;
   icon: string;
-  isPlaceholder?: boolean;
   matchPaths?: string[];
 };
 
 const coreWorkflowNavItems: NavItem[] = [
   { href: '/', label: 'Home', icon: 'home', matchPaths: ['/', '/app'] },
   { href: '/catalog', label: 'Catalog', icon: 'inventory_2', matchPaths: ['/catalog'] },
-  { label: 'Activity / Actions', icon: 'checklist', isPlaceholder: true },
-  { label: 'Governance / Insights', icon: 'policy', isPlaceholder: true },
-];
-
-const supportingNavItems: NavItem[] = [
-  { label: 'Explore', icon: 'travel_explore', isPlaceholder: true },
-];
-
-const systemNavItems: NavItem[] = [
-  { label: 'Notifications', icon: 'notifications', isPlaceholder: true },
+  { href: '/activity', label: 'Activity / Actions', icon: 'checklist', matchPaths: ['/activity'] },
 ];
 
 type SidebarAccountPanelProps = {
@@ -62,10 +48,7 @@ function SidebarAccountPanel({ name, role, isCollapsed }: SidebarAccountPanelPro
 }
 
 const isNavItemActive = (activePath: string, item: NavItem) => {
-  if (!item.href) {
-    return false;
-  }
-
+  if (!item.href) return false;
   const paths = item.matchPaths ?? [item.href];
   return paths.some((path) => (path === '/' ? activePath === '/' : activePath === path || activePath.startsWith(`${path}/`)));
 };
@@ -73,21 +56,17 @@ const isNavItemActive = (activePath: string, item: NavItem) => {
 export function AppShell({ children, currentPath }: AppShellProps) {
   const pathname = usePathname();
   const router = useRouter();
+  const { requestExecution, recentActions } = useActionExecution();
   const [isPaletteOpen, setIsPaletteOpen] = useState(false);
   const [query, setQuery] = useState('');
   const [selectedIndex, setSelectedIndex] = useState(0);
-  const [pendingAction, setPendingAction] = useState<PendingAction | null>(null);
-  const [auditTrail, setAuditTrail] = useState<string[]>([]);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState(false);
 
   const activePath = pathname ?? currentPath ?? '/';
   const activeApp = useMemo(() => {
     const appPathMatch = activePath.match(/^\/app\/([^/]+)/);
-    if (!appPathMatch) {
-      return undefined;
-    }
-
+    if (!appPathMatch) return undefined;
     return mockApplications.find((app) => app.id === appPathMatch[1]);
   }, [activePath]);
 
@@ -112,7 +91,37 @@ export function AppShell({ children, currentPath }: AppShellProps) {
       description: action.description,
       type: 'action' as const,
       onSelect: () => {
-        setPendingAction({ label: action.label, description: action.description });
+        if (action.category === 'navigation') {
+          if (action.id === 'navigate-application' && !activeApp && mockApplications[0]) {
+            router.push(`/app/${mockApplications[0].id}`);
+          }
+          if (action.id === 'open-ai-companion' && activeApp) {
+            router.push(`/app/${activeApp.id}?openAi=true`);
+          }
+          if (action.id === 'jump-logs-metrics' && activeApp) {
+            router.push(`/app/${activeApp.id}`);
+          }
+          setIsPaletteOpen(false);
+          return;
+        }
+
+        const actionType = action.id === 'rollback'
+          ? EXECUTION_ACTIONS.ROLLBACK_DEPLOYMENT
+          : EXECUTION_ACTIONS.RESTART_SERVICE;
+
+        requestExecution({
+          payload: {
+            actionType,
+            target: activeApp?.name ?? 'No application selected',
+            appId: activeApp?.id ?? 'unknown-app',
+            applicationName: activeApp?.name,
+            environment: currentEnvironment,
+            provider: activeApp?.provider,
+            impactSummary: action.id === 'rollback'
+              ? 'Revert service to previous deployment version.'
+              : 'Restart service workloads for the selected application.',
+          },
+        });
         setIsPaletteOpen(false);
       },
       incidentPriority: action.incidentPriority && activeApp?.activeIncident,
@@ -125,18 +134,12 @@ export function AppShell({ children, currentPath }: AppShellProps) {
       ...appNavigation,
     ];
 
-    if (!query) {
-      return ordered;
-    }
-
+    if (!query) return ordered;
     const normalized = query.toLowerCase();
     return ordered.filter((item) => `${item.label} ${item.description}`.toLowerCase().includes(normalized));
-  }, [activeApp, query, router]);
+  }, [activeApp, currentEnvironment, query, requestExecution, router]);
 
-  useEffect(() => {
-    setSelectedIndex(0);
-  }, [query, isPaletteOpen]);
-
+  useEffect(() => setSelectedIndex(0), [query, isPaletteOpen]);
   useEffect(() => {
     document.documentElement.dataset.theme = isDarkMode ? 'dark' : 'light';
   }, [isDarkMode]);
@@ -147,62 +150,25 @@ export function AppShell({ children, currentPath }: AppShellProps) {
         event.preventDefault();
         setIsPaletteOpen((open) => !open);
       }
-
-      if (!isPaletteOpen) {
-        return;
-      }
-
-      if (event.key === 'Escape') {
-        setIsPaletteOpen(false);
-      }
-
+      if (!isPaletteOpen) return;
+      if (event.key === 'Escape') setIsPaletteOpen(false);
       if (event.key === 'ArrowDown') {
         event.preventDefault();
         setSelectedIndex((index) => Math.min(index + 1, Math.max(paletteItems.length - 1, 0)));
       }
-
       if (event.key === 'ArrowUp') {
         event.preventDefault();
         setSelectedIndex((index) => Math.max(index - 1, 0));
       }
-
       if (event.key === 'Enter') {
         const item = paletteItems[selectedIndex];
-        if (!item) {
-          return;
-        }
-
-        item.onSelect();
+        item?.onSelect();
       }
     };
 
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
   }, [isPaletteOpen, paletteItems, selectedIndex]);
-
-  const confirmAction = () => {
-    if (!pendingAction) {
-      return;
-    }
-
-    const appName = activeApp?.name ?? 'No application selected';
-    const timestamp = new Date().toISOString();
-
-    setAuditTrail((current) => [
-      `${pendingAction.label} · ${appName} · ${currentEnvironment} · Devin · ${timestamp}`,
-      ...current,
-    ]);
-
-    if (pendingAction.label === 'Navigate to application' && !activeApp && mockApplications[0]) {
-      router.push(`/app/${mockApplications[0].id}`);
-    }
-
-    if (pendingAction.label === 'Open AI companion' && activeApp) {
-      router.push(`/app/${activeApp.id}?openAi=true`);
-    }
-
-    setPendingAction(null);
-  };
 
   return (
     <div className={`portal-shell ${isSidebarCollapsed ? 'portal-shell--collapsed' : ''}`}>
@@ -213,9 +179,7 @@ export function AppShell({ children, currentPath }: AppShellProps) {
               type="button"
               className="brand-mark-button"
               onClick={() => {
-                if (isSidebarCollapsed) {
-                  setIsSidebarCollapsed(false);
-                }
+                if (isSidebarCollapsed) setIsSidebarCollapsed(false);
               }}
               aria-label={isSidebarCollapsed ? 'Expand navigation' : 'Nebula'}
             >
@@ -246,74 +210,14 @@ export function AppShell({ children, currentPath }: AppShellProps) {
               {!isSidebarCollapsed && <p className="nav-section-title">Core workflow</p>}
               <nav className="nav-list" aria-label="Core workflow navigation">
                 {coreWorkflowNavItems.map((item) => {
-                  if (item.isPlaceholder) {
-                    return (
-                      <button
-                        type="button"
-                        className="nav-link nav-link--placeholder"
-                        key={item.label}
-                        disabled
-                        title={isSidebarCollapsed ? item.label : undefined}
-                      >
-                        <span className="material-symbols-outlined nav-link-icon" aria-hidden="true">{item.icon}</span>
-                        {!isSidebarCollapsed && <span>{item.label}</span>}
-                      </button>
-                    );
-                  }
-
+                  const isActive = isNavItemActive(activePath, item);
                   return (
-                    <Link
-                      className={`nav-link ${isNavItemActive(activePath, item) ? 'active' : ''}`}
-                      key={item.href}
-                      href={item.href ?? '#'}
-                      aria-label={item.label}
-                      title={isSidebarCollapsed ? item.label : undefined}
-                    >
+                    <Link href={item.href ?? '#'} className={`nav-link ${isActive ? 'active' : ''}`} key={item.label} title={isSidebarCollapsed ? item.label : undefined}>
                       <span className="material-symbols-outlined nav-link-icon" aria-hidden="true">{item.icon}</span>
                       {!isSidebarCollapsed && <span>{item.label}</span>}
                     </Link>
                   );
                 })}
-              </nav>
-            </div>
-
-            <div className="nav-section-divider" />
-
-            <div>
-              {!isSidebarCollapsed && <p className="nav-section-title">Supporting tools</p>}
-              <nav className="nav-list" aria-label="Supporting tools navigation">
-                {supportingNavItems.map((item) => (
-                  <button
-                    type="button"
-                    className="nav-link nav-link--placeholder"
-                    key={item.label}
-                    disabled
-                    title={isSidebarCollapsed ? item.label : undefined}
-                  >
-                    <span className="material-symbols-outlined nav-link-icon" aria-hidden="true">{item.icon}</span>
-                    {!isSidebarCollapsed && <span>{item.label}</span>}
-                  </button>
-                ))}
-              </nav>
-            </div>
-
-            <div className="nav-section-divider" />
-
-            <div>
-              {!isSidebarCollapsed && <p className="nav-section-title">System</p>}
-              <nav className="nav-list" aria-label="System navigation">
-                {systemNavItems.map((item) => (
-                  <button
-                    type="button"
-                    className="nav-link nav-link--placeholder"
-                    key={item.label}
-                    disabled
-                    title={isSidebarCollapsed ? item.label : undefined}
-                  >
-                    <span className="material-symbols-outlined nav-link-icon" aria-hidden="true">{item.icon}</span>
-                    {!isSidebarCollapsed && <span>{item.label}</span>}
-                  </button>
-                ))}
               </nav>
             </div>
           </div>
@@ -335,14 +239,7 @@ export function AppShell({ children, currentPath }: AppShellProps) {
                 <span>Dark mode</span>
               </span>
             )}
-            <button
-              type="button"
-              id="dark-mode-toggle"
-              className={`switch ${isDarkMode ? 'is-on' : ''}`}
-              aria-pressed={isDarkMode}
-              onClick={() => setIsDarkMode((value) => !value)}
-              title={isSidebarCollapsed ? 'Dark mode' : undefined}
-            >
+            <button type="button" id="dark-mode-toggle" className={`switch ${isDarkMode ? 'is-on' : ''}`} aria-pressed={isDarkMode} onClick={() => setIsDarkMode((value) => !value)} title={isSidebarCollapsed ? 'Dark mode' : undefined}>
               <span className="switch-thumb" />
             </button>
           </label>
@@ -361,58 +258,19 @@ export function AppShell({ children, currentPath }: AppShellProps) {
           <div className="palette-panel">
             <div className="palette-input-row">
               <Badge variant="env">{activeApp?.name ?? 'My Applications'}</Badge>
-              <input
-                autoFocus
-                value={query}
-                onChange={(event) => setQuery(event.target.value)}
-                placeholder="Search commands"
-                className="palette-input"
-              />
+              <input autoFocus value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search commands" className="palette-input" />
             </div>
             <div className="palette-results">
               {paletteItems.map((item, index) => (
-                <button
-                  type="button"
-                  key={item.id}
-                  className={`palette-item ${index === selectedIndex ? 'selected' : ''}`}
-                  onClick={item.onSelect}
-                >
+                <button type="button" key={item.id} className={`palette-item ${index === selectedIndex ? 'selected' : ''}`} onClick={item.onSelect}>
                   <span className="palette-item-label">{item.label}</span>
                   <span className="palette-item-description">{item.description}</span>
-                  {'requiresApplication' in item && item.requiresApplication && !activeApp && (
-                    <span className="palette-item-hint">Select an application first</span>
-                  )}
+                  {'requiresApplication' in item && item.requiresApplication && !activeApp && <span className="palette-item-hint">Select an application first</span>}
                 </button>
               ))}
             </div>
             <footer className="palette-footer">↑↓ Navigate · Enter Select · Esc Close · ACME · Devin</footer>
-          </div>
-        </section>
-      )}
-
-      {pendingAction && (
-        <section className="confirm-overlay" role="dialog" aria-label="Confirm action">
-          <div className="confirm-modal">
-            <h2>Confirm action</h2>
-            <p>{pendingAction.description}</p>
-            <p>
-              <strong>Application:</strong> {activeApp?.name ?? 'No application selected'}
-            </p>
-            <p>
-              <strong>Environment:</strong> {currentEnvironment}
-            </p>
-            <p>
-              <strong>Actor:</strong> Devin
-            </p>
-            <div className="confirm-actions">
-              <button type="button" className="incident-button" onClick={confirmAction}>
-                Confirm
-              </button>
-              <button type="button" className="incident-button secondary" onClick={() => setPendingAction(null)}>
-                Cancel
-              </button>
-            </div>
-            {auditTrail.length > 0 && <p className="palette-audit">Last action: {auditTrail[0]}</p>}
+            {recentActions.length > 0 && <p className="palette-audit">Last action: {recentActions[0].actionLabel} · {recentActions[0].status}</p>}
           </div>
         </section>
       )}

@@ -2240,3 +2240,23 @@ textarea:focus-visible {
     align-items: flex-start;
   }
 }
+
+.global-toast {
+  position: fixed;
+  right: 24px;
+  bottom: 24px;
+  z-index: 2200;
+  padding: 10px 14px;
+  border-radius: 10px;
+  color: #fff;
+  font-weight: 600;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
+}
+
+.global-toast--success {
+  background: #166534;
+}
+
+.global-toast--failure {
+  background: #b91c1c;
+}
