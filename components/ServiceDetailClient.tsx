@@ -4,7 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { CatalogService, CloudApplication, GovernanceStatus } from '@/components/types';
 import { ProviderBadge } from '@/components/ProviderBadge';
-import { ACTION_LABELS, useActionExecution } from '@/components/execution';
+import { EXECUTION_ACTIONS, useActionExecution } from '@/components/execution';
 
 type ServiceDetailClientProps = {
   application: CloudApplication;
@@ -42,8 +42,9 @@ function fitDotClass(signal: string) {
   }
 }
 
-export function ServiceDetailClient({ application, service, alternative, currentEnvironment }: ServiceDetailClientProps) {
-  const { requestAction } = useActionExecution();
+export function ServiceDetailClient({ application, service, alternative: _alternative, currentEnvironment }: ServiceDetailClientProps) {
+  const { requestExecution } = useActionExecution();
+  void _alternative;
   const [environment, setEnvironment] = useState(currentEnvironment);
   const [region, setRegion] = useState(application.provider === 'GCP' ? REGIONS_GCP[0] : REGIONS_AWS[0]);
   const [instanceSize, setInstanceSize] = useState(INSTANCE_SIZES[1]);
@@ -53,45 +54,36 @@ export function ServiceDetailClient({ application, service, alternative, current
   const regions = application.provider === 'GCP' ? REGIONS_GCP : REGIONS_AWS;
 
   const handleProvisionClick = () => {
-    const governanceSignal = service.governance === 'discouraged'
-      ? `Discouraged for this app type.${alternative ? ` Consider ${alternative.name}.` : ''}`
-      : governanceLabel[service.governance];
-
-    requestAction({
-      actionType: ACTION_LABELS.provisionService,
-      source: 'service',
-      target: `${application.name} · ${service.name}`,
-      appId: application.id,
-      provider: application.provider,
-      environment,
-      governanceState: service.governance,
-      impactSummary: `Provision ${service.name} to ${application.name} in ${environment} (${region}, ${instanceSize}).`,
-      governanceSignal,
-      confirmLabel: 'Confirm provision service',
-      onExecute: () => {
-        if (service.governance === 'approved') {
-          return { status: 'success', message: `Provision service succeeded for ${service.name}.` };
-        }
-        if (service.governance === 'requires-approval') {
-          return { status: 'success', message: `Provision service request submitted for ${service.name}.`, details: 'Pending approval.' };
-        }
-        return { status: 'success', message: `Exception request submitted for ${service.name}.`, details: 'Discouraged service flagged for review.' };
+    requestExecution({
+      payload: {
+        actionType: EXECUTION_ACTIONS.PROVISION_SERVICE,
+        target: service.name,
+        appId: application.id,
+        applicationName: application.name,
+        provider: application.provider,
+        environment,
+        governanceState: service.governance,
+        details: `${region} · ${instanceSize}`,
+        impactSummary: 'Add managed service to application.',
       },
       onComplete: (result) => {
         setOutcomeMessage(result.message);
-        if (service.governance === 'approved' && result.status === 'success') {
+        if (result.status === 'failure') {
+          setOutcome('failed');
+          return;
+        }
+
+        if (service.governance === 'approved') {
           setOutcome('success');
           return;
         }
-        if (service.governance === 'requires-approval' && result.status === 'success') {
+
+        if (service.governance === 'requires-approval') {
           setOutcome('pending-approval');
           return;
         }
-        if (service.governance === 'discouraged' && result.status === 'success') {
-          setOutcome('exception-submitted');
-          return;
-        }
-        setOutcome('failed');
+
+        setOutcome('exception-submitted');
       },
     });
   };

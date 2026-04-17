@@ -12,27 +12,34 @@ export default function ActivityPage() {
         <header className="catalog-header">
           <div className="catalog-header-left">
             <h1 className="catalog-title">Recent Activity / Actions</h1>
-            <p className="catalog-subtitle">System-wide action log for this runtime session (latest 20).</p>
+            <p className="catalog-subtitle">Execution order is newest first. Session memory only (max 20).</p>
           </div>
         </header>
 
         {recentActions.length === 0 ? (
-          <p className="placeholder">No actions yet. Trigger an action from workspace, services, templates, or command palette.</p>
+          <p className="placeholder">No execution actions yet. Run rollback, provision service, use template, or restart service.</p>
         ) : (
           <div className="dependency-list" role="log" aria-label="Recent actions">
-            {recentActions.map((entry) => (
-              <article key={`${entry.timestamp}-${entry.actionType}-${entry.source}`} className="dependency-row">
-                <div className="dependency-main">
-                  <p className="dependency-row__name">{entry.actionType}</p>
-                  <p className="dependency-row__detail">
-                    {entry.target ?? 'No target'} · {entry.source} · {new Date(entry.timestamp).toLocaleString()}
-                  </p>
-                </div>
-                <div className="dependency-row__badges">
-                  <span className={`pill ${entry.status === 'success' ? 'gov-approved' : 'gov-discouraged'}`}>{entry.status}</span>
-                </div>
-              </article>
-            ))}
+            {recentActions.map((entry) => {
+              const context = [entry.provider, entry.environment].filter(Boolean).join(' / ');
+              return (
+                <article key={`${entry.timestamp}-${entry.actionType}-${entry.target}`} className="dependency-row">
+                  <div className="dependency-main">
+                    <p className="dependency-row__name">
+                      {entry.actionLabel} — {entry.application}{context ? ` (${context})` : ''} — {entry.status === 'success' ? 'Success' : 'Failure'}
+                    </p>
+                    <p className="dependency-row__detail">
+                      Target: {entry.target} · {new Date(entry.timestamp).toLocaleString()}
+                      {entry.governanceState ? ` · Governance: ${entry.governanceState}` : ''}
+                    </p>
+                    {entry.message && <p className="dependency-row__detail">Result: {entry.message}</p>}
+                  </div>
+                  <div className="dependency-row__badges">
+                    <span className={`pill ${entry.status === 'success' ? 'gov-approved' : 'gov-discouraged'}`}>{entry.status}</span>
+                  </div>
+                </article>
+              );
+            })}
           </div>
         )}
       </div>

@@ -3,7 +3,7 @@
 import { FormEvent, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
-import { ACTION_LABELS, useActionExecution } from '@/components/execution';
+import { EXECUTION_ACTIONS, useActionExecution } from '@/components/execution';
 import { Badge, BadgeVariant } from '@/components/Badge';
 import { AppLogsMetrics, CloudApplication, DependencyHealthStatus, HealthStatus } from '@/components/types';
 import { ApplicationInsight, ApplicationInsights } from '@/components/ApplicationInsights';
@@ -157,7 +157,7 @@ export function ApplicationWorkspaceClient({
   const [didRunRollback, setDidRunRollback] = useState(false);
   const [actionFeedback, setActionFeedback] = useState('');
   const [activeTab, setActiveTab] = useState<WorkspaceTab>('Overview');
-  const { requestAction } = useActionExecution();
+  const { requestExecution } = useActionExecution();
 
   const activeMetrics = useMemo(() => {
     if (!logsMetrics) {
@@ -221,43 +221,43 @@ export function ApplicationWorkspaceClient({
   };
 
   const executeAction = (label: string) => {
-    requestAction({
-      actionType: label as (typeof ACTION_LABELS)[keyof typeof ACTION_LABELS],
-      source: 'workspace',
-      target: application.name,
-      appId: application.id,
-      provider: application.provider,
-      environment: currentEnvironment,
-      impactSummary: `${label} will run for ${application.name} in ${currentEnvironment}.`,
-      governanceSignal: application.activeIncident ? 'Incident active' : 'Standard operation',
-      confirmLabel: `Confirm ${label.toLowerCase()}`,
-      onExecute: () => {
-        if (label === ACTION_LABELS.rollbackDeployment && logsMetrics?.rollbackSimulation && !didRunRollback) {
-          setDidRunRollback(true);
-          setActionFeedback(logsMetrics.rollbackSimulation?.aiConfirmation ?? 'Rollback simulated successfully.');
-          return { status: 'success', message: `Rollback deployment completed for ${application.name}.` };
-        }
+    if (label === 'Rollback deployment') {
+      requestExecution({
+        payload: {
+          actionType: EXECUTION_ACTIONS.ROLLBACK_DEPLOYMENT,
+          target: application.name,
+          appId: application.id,
+          applicationName: application.name,
+          provider: application.provider,
+          environment: currentEnvironment,
+          impactSummary: 'Revert service to previous deployment version.',
+        },
+        onComplete: (result) => {
+          if (result.status === 'success' && logsMetrics?.rollbackSimulation && !didRunRollback) {
+            setDidRunRollback(true);
+            setActionFeedback(logsMetrics.rollbackSimulation.aiConfirmation ?? result.message);
+            return;
+          }
 
-        if (label === ACTION_LABELS.jumpToLogsMetrics) {
-          setActiveTab('Logs & metrics');
-          setActionFeedback(`Opened logs & metrics for ${application.name}.`);
-          return { status: 'success', message: `Logs & metrics opened for ${application.name}.` };
-        }
-
-        if (label === ACTION_LABELS.openAiCompanion) {
-          setIsCompanionOpen(true);
-          setActionFeedback(`AI companion opened for ${application.name}.`);
-          return { status: 'success', message: `AI companion opened for ${application.name}.` };
-        }
-
-        return { status: 'success', message: `${label} completed for ${application.name}.` };
-      },
-      onComplete: (result) => {
-        if (result.status === 'failure' && !actionFeedback) {
           setActionFeedback(result.message);
-        }
-      },
-    });
+        },
+      });
+      return;
+    }
+
+    if (label === 'Jump to logs & metrics') {
+      setActiveTab('Logs & metrics');
+      setActionFeedback(`Opened logs & metrics for ${application.name}.`);
+      return;
+    }
+
+    if (label === 'Open AI companion') {
+      setIsCompanionOpen(true);
+      setActionFeedback(`AI companion opened for ${application.name}.`);
+      return;
+    }
+
+    setActionFeedback(`${label} completed for ${application.name}.`);
   };
 
   const applicationInsights = useApplicationInsights({

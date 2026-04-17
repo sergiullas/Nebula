@@ -6,7 +6,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import { mockApplications } from './data';
 import { buildSharedActions } from './actions';
 import { Badge } from './Badge';
-import { ACTION_LABELS, useActionExecution } from './execution';
+import { EXECUTION_ACTIONS, useActionExecution } from './execution';
 
 type AppShellProps = {
   children: ReactNode;
@@ -25,15 +25,6 @@ const coreWorkflowNavItems: NavItem[] = [
   { href: '/', label: 'Home', icon: 'home', matchPaths: ['/', '/app'] },
   { href: '/catalog', label: 'Catalog', icon: 'inventory_2', matchPaths: ['/catalog'] },
   { href: '/activity', label: 'Activity / Actions', icon: 'checklist', matchPaths: ['/activity'] },
-  { label: 'Governance / Insights', icon: 'policy', isPlaceholder: true },
-];
-
-const supportingNavItems: NavItem[] = [
-  { label: 'Explore', icon: 'travel_explore', isPlaceholder: true },
-];
-
-const systemNavItems: NavItem[] = [
-  { label: 'Notifications', icon: 'notifications', isPlaceholder: true },
 ];
 
 type SidebarAccountPanelProps = {
@@ -66,7 +57,7 @@ const isNavItemActive = (activePath: string, item: NavItem) => {
 export function AppShell({ children, currentPath }: AppShellProps) {
   const pathname = usePathname();
   const router = useRouter();
-  const { requestAction, recentActions } = useActionExecution();
+  const { requestExecution, recentActions } = useActionExecution();
   const [isPaletteOpen, setIsPaletteOpen] = useState(false);
   const [query, setQuery] = useState('');
   const [selectedIndex, setSelectedIndex] = useState(0);
@@ -101,23 +92,35 @@ export function AppShell({ children, currentPath }: AppShellProps) {
       description: action.description,
       type: 'action' as const,
       onSelect: () => {
-        requestAction({
-          actionType: action.label,
-          source: 'palette',
-          target: activeApp?.name ?? 'No application selected',
-          appId: activeApp?.id,
-          provider: activeApp?.provider,
-          environment: currentEnvironment,
-          impactSummary: action.description,
-          confirmLabel: `Confirm ${action.label.toLowerCase()}`,
-          onExecute: () => {
-            if (action.label === ACTION_LABELS.navigateApplication && !activeApp && mockApplications[0]) {
-              router.push(`/app/${mockApplications[0].id}`);
-            }
-            if (action.label === ACTION_LABELS.openAiCompanion && activeApp) {
-              router.push(`/app/${activeApp.id}?openAi=true`);
-            }
-            return { message: `${action.label} completed for ${activeApp?.name ?? 'current scope'}.` };
+        if (action.category === 'navigation') {
+          if (action.id === 'navigate-application' && !activeApp && mockApplications[0]) {
+            router.push(`/app/${mockApplications[0].id}`);
+          }
+          if (action.id === 'open-ai-companion' && activeApp) {
+            router.push(`/app/${activeApp.id}?openAi=true`);
+          }
+          if (action.id === 'jump-logs-metrics' && activeApp) {
+            router.push(`/app/${activeApp.id}`);
+          }
+          setIsPaletteOpen(false);
+          return;
+        }
+
+        const actionType = action.id === 'rollback'
+          ? EXECUTION_ACTIONS.ROLLBACK_DEPLOYMENT
+          : EXECUTION_ACTIONS.RESTART_SERVICE;
+
+        requestExecution({
+          payload: {
+            actionType,
+            target: activeApp?.name ?? 'No application selected',
+            appId: activeApp?.id ?? 'unknown-app',
+            applicationName: activeApp?.name,
+            environment: currentEnvironment,
+            provider: activeApp?.provider,
+            impactSummary: action.id === 'rollback'
+              ? 'Revert service to previous deployment version.'
+              : 'Restart service workloads for the selected application.',
           },
         });
         setIsPaletteOpen(false);
@@ -135,7 +138,7 @@ export function AppShell({ children, currentPath }: AppShellProps) {
     if (!query) return ordered;
     const normalized = query.toLowerCase();
     return ordered.filter((item) => `${item.label} ${item.description}`.toLowerCase().includes(normalized));
-  }, [activeApp, currentEnvironment, query, requestAction, router]);
+  }, [activeApp, currentEnvironment, query, requestExecution, router]);
 
   useEffect(() => setSelectedIndex(0), [query, isPaletteOpen]);
   useEffect(() => {
@@ -208,15 +211,6 @@ export function AppShell({ children, currentPath }: AppShellProps) {
               {!isSidebarCollapsed && <p className="nav-section-title">Core workflow</p>}
               <nav className="nav-list" aria-label="Core workflow navigation">
                 {coreWorkflowNavItems.map((item) => {
-                  if (item.isPlaceholder) {
-                    return (
-                      <button type="button" className="nav-link nav-link--placeholder" key={item.label} disabled title={isSidebarCollapsed ? item.label : undefined}>
-                        <span className="material-symbols-outlined nav-link-icon" aria-hidden="true">{item.icon}</span>
-                        {!isSidebarCollapsed && <span>{item.label}</span>}
-                      </button>
-                    );
-                  }
-
                   const isActive = isNavItemActive(activePath, item);
                   return (
                     <Link href={item.href ?? '#'} className={`nav-link ${isActive ? 'active' : ''}`} key={item.label} title={isSidebarCollapsed ? item.label : undefined}>
@@ -226,30 +220,6 @@ export function AppShell({ children, currentPath }: AppShellProps) {
                   );
                 })}
               </nav>
-            </div>
-
-            <div>
-              {!isSidebarCollapsed && <p className="nav-section-title">Supporting</p>}
-              <div className="nav-list">
-                {supportingNavItems.map((item) => (
-                  <button type="button" key={item.label} className="nav-link nav-link--placeholder" disabled title={isSidebarCollapsed ? item.label : undefined}>
-                    <span className="material-symbols-outlined nav-link-icon" aria-hidden="true">{item.icon}</span>
-                    {!isSidebarCollapsed && <span>{item.label}</span>}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div>
-              {!isSidebarCollapsed && <p className="nav-section-title">System</p>}
-              <div className="nav-list">
-                {systemNavItems.map((item) => (
-                  <button type="button" key={item.label} className="nav-link nav-link--placeholder" disabled title={isSidebarCollapsed ? item.label : undefined}>
-                    <span className="material-symbols-outlined nav-link-icon" aria-hidden="true">{item.icon}</span>
-                    {!isSidebarCollapsed && <span>{item.label}</span>}
-                  </button>
-                ))}
-              </div>
             </div>
           </div>
 
@@ -301,7 +271,7 @@ export function AppShell({ children, currentPath }: AppShellProps) {
               ))}
             </div>
             <footer className="palette-footer">↑↓ Navigate · Enter Select · Esc Close · ACME · Devin</footer>
-            {recentActions.length > 0 && <p className="palette-audit">Last action: {recentActions[0].actionType} · {recentActions[0].status}</p>}
+            {recentActions.length > 0 && <p className="palette-audit">Last action: {recentActions[0].actionLabel} · {recentActions[0].status}</p>}
           </div>
         </section>
       )}

@@ -9,7 +9,7 @@ import {
   TemplateGovernanceState,
   TemplateWorkloadType,
 } from '@/components/types';
-import { ACTION_LABELS, useActionExecution } from '@/components/execution';
+import { EXECUTION_ACTIONS, useActionExecution } from '@/components/execution';
 
 type FlowStep = 'inspect' | 'configure' | 'review' | 'done';
 type DoneOutcome = 'success' | 'pending-approval' | 'blocked-by-policy';
@@ -643,7 +643,7 @@ export function TemplateDetailClient({ template }: TemplateDetailClientProps) {
     Object.fromEntries(template.parameters.map((p) => [p.id, p.default]))
   );
   const [doneOutcome, setDoneOutcome] = useState<DoneOutcome>('success');
-  const { requestAction } = useActionExecution();
+  const { requestExecution } = useActionExecution();
   const [blockedMessage, setBlockedMessage] = useState('');
 
   const handleParamChange = (id: string, value: string) => {
@@ -674,23 +674,16 @@ export function TemplateDetailClient({ template }: TemplateDetailClientProps) {
   const configuredCost = useMemo(() => estimateConfiguredCost(template, paramValues), [paramValues, template]);
 
   const handleProvision = () => {
-    requestAction({
-      actionType: ACTION_LABELS.useTemplate,
-      source: 'template',
-      target: template.name,
-      provider: template.provider,
-      governanceState: template.governanceState,
-      impactSummary: `Use template ${template.name} to provision its configured resources.`,
-      governanceSignal: templateGovernanceLabel[template.governanceState],
-      confirmLabel: 'Confirm use template',
-      onExecute: () => {
-        if (template.governanceState === 'approved') {
-          return { status: 'success', message: `Template used successfully: ${template.name}.` };
-        }
-        if (template.governanceState === 'requires-approval') {
-          return { status: 'success', message: `Template request submitted for approval: ${template.name}.` };
-        }
-        return { status: 'failure', message: `Template blocked by policy: ${template.name}.` };
+    requestExecution({
+      payload: {
+        actionType: EXECUTION_ACTIONS.USE_TEMPLATE,
+        target: template.name,
+        appId: 'template-catalog',
+        applicationName: 'Template Catalog',
+        provider: template.provider,
+        governanceState: template.governanceState,
+        templateName: template.name,
+        impactSummary: 'Apply template blueprint to provision managed resources.',
       },
       onComplete: (result) => {
         let outcome: DoneOutcome;

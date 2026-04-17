@@ -1,54 +1,56 @@
 import { ReactNode, createContext, useContext, useMemo, useState } from 'react';
 
-export const ACTION_LABELS = {
-  rollbackDeployment: 'Rollback deployment',
-  triggerDeployment: 'Trigger deployment',
-  switchEnvironment: 'Switch environment',
-  provisionEnvironment: 'Provision environment',
-  jumpToLogsMetrics: 'Jump to logs & metrics',
-  openAiCompanion: 'Open AI companion',
-  navigateApplication: 'Navigate to application',
-  provisionService: 'Provision service',
-  useTemplate: 'Use template',
-  restartService: 'Restart service',
+export const EXECUTION_ACTIONS = {
+  ROLLBACK_DEPLOYMENT: 'ROLLBACK_DEPLOYMENT',
+  PROVISION_SERVICE: 'PROVISION_SERVICE',
+  USE_TEMPLATE: 'USE_TEMPLATE',
+  RESTART_SERVICE: 'RESTART_SERVICE',
 } as const;
 
-export type ActionLabel = (typeof ACTION_LABELS)[keyof typeof ACTION_LABELS];
-export type ActionSource = 'palette' | 'workspace' | 'service' | 'template';
+export type ExecutionActionType = (typeof EXECUTION_ACTIONS)[keyof typeof EXECUTION_ACTIONS];
+
+export const EXECUTION_ACTION_LABELS: Record<ExecutionActionType, string> = {
+  ROLLBACK_DEPLOYMENT: 'Rollback deployment',
+  PROVISION_SERVICE: 'Provision service',
+  USE_TEMPLATE: 'Use template',
+  RESTART_SERVICE: 'Restart service',
+};
+
+export type ExecutionActionPayload = {
+  actionType: ExecutionActionType;
+  target: string;
+  appId: string;
+  applicationName?: string;
+  environment?: string;
+  provider?: string;
+  governanceState?: string;
+  details?: string;
+  templateName?: string;
+  impactSummary: string;
+};
 
 export type ActionExecutionResult = {
   status: 'success' | 'failure';
   message: string;
   timestamp: string;
-  actionType: ActionLabel;
-  source: ActionSource;
-  target?: string;
-  details?: string;
-  appId?: string;
-  provider?: string;
+  actionType: ExecutionActionType;
+  actionLabel: string;
+  target: string;
+  application: string;
+  appId: string;
   environment?: string;
+  provider?: string;
   governanceState?: string;
+  details?: string;
 };
 
-type ActionRequest = {
-  actionType: ActionLabel;
-  source: ActionSource;
-  target?: string;
-  appId?: string;
-  provider?: string;
-  environment?: string;
-  governanceState?: string;
-  details?: string;
-  confirmationTitle?: string;
-  impactSummary: string;
-  governanceSignal?: string;
-  confirmLabel?: string;
-  onExecute?: () => Promise<Partial<ActionExecutionResult>> | Partial<ActionExecutionResult>;
+type PendingExecution = {
+  payload: ExecutionActionPayload;
   onComplete?: (result: ActionExecutionResult) => void;
 };
 
 type ExecutionContextValue = {
-  requestAction: (request: ActionRequest) => void;
+  requestExecution: (request: PendingExecution) => void;
   recentActions: ActionExecutionResult[];
 };
 
@@ -62,56 +64,88 @@ export function useActionExecution() {
   return context;
 }
 
-export function ActionExecutionProvider({ children }: { children: ReactNode }) {
-  const [pendingAction, setPendingAction] = useState<ActionRequest | null>(null);
-  const [recentActions, setRecentActions] = useState<ActionExecutionResult[]>([]);
-  const [toast, setToast] = useState<{ tone: 'success' | 'failure'; message: string } | null>(null);
-
-  const requestAction = (request: ActionRequest) => {
-    setPendingAction(request);
-  };
-
-  const executePendingAction = async () => {
-    if (!pendingAction) {
-      return;
+const dispatcher: Record<ExecutionActionType, (payload: ExecutionActionPayload) => Pick<ActionExecutionResult, 'status' | 'message' | 'details'>> = {
+  ROLLBACK_DEPLOYMENT: (payload) => ({
+    status: 'success',
+    message: `Rollback deployment completed for ${payload.target}.`,
+  }),
+  PROVISION_SERVICE: (payload) => {
+    if (payload.governanceState === 'approved') {
+      return { status: 'success', message: `Provision service completed for ${payload.target}.` };
     }
 
-    const timestamp = new Date().toISOString();
-    const baseResult: ActionExecutionResult = {
-      status: 'success',
-      message: `${pendingAction.actionType} completed.`,
-      timestamp,
-      actionType: pendingAction.actionType,
-      source: pendingAction.source,
-      target: pendingAction.target,
-      details: pendingAction.details,
-      appId: pendingAction.appId,
-      provider: pendingAction.provider,
-      environment: pendingAction.environment,
-      governanceState: pendingAction.governanceState,
-    };
-
-    let result = baseResult;
-
-    try {
-      const custom = pendingAction.onExecute ? await pendingAction.onExecute() : {};
-      result = { ...baseResult, ...custom, timestamp, actionType: pendingAction.actionType, source: pendingAction.source };
-    } catch (error) {
-      result = {
-        ...baseResult,
-        status: 'failure',
-        message: error instanceof Error ? error.message : `${pendingAction.actionType} failed.`,
+    if (payload.governanceState === 'requires-approval') {
+      return {
+        status: 'success',
+        message: `Provision service request submitted for ${payload.target}.`,
+        details: 'Pending platform approval.',
       };
     }
 
+    return {
+      status: 'success',
+      message: `Provision service exception request submitted for ${payload.target}.`,
+      details: 'Discouraged service flagged for review.',
+    };
+  },
+  USE_TEMPLATE: (payload) => {
+    if (payload.governanceState === 'includes-restricted') {
+      return { status: 'failure', message: `Use template blocked by policy for ${payload.target}.` };
+    }
+
+    if (payload.governanceState === 'requires-approval') {
+      return {
+        status: 'success',
+        message: `Use template request submitted for ${payload.target}.`,
+        details: 'Template is pending approval.',
+      };
+    }
+
+    return { status: 'success', message: `Use template completed for ${payload.target}.` };
+  },
+  RESTART_SERVICE: (payload) => ({
+    status: 'success',
+    message: `Restart service completed for ${payload.target}.`,
+  }),
+};
+
+export function ActionExecutionProvider({ children }: { children: ReactNode }) {
+  const [pendingExecution, setPendingExecution] = useState<PendingExecution | null>(null);
+  const [recentActions, setRecentActions] = useState<ActionExecutionResult[]>([]);
+  const [toast, setToast] = useState<{ tone: 'success' | 'failure'; message: string } | null>(null);
+
+  const requestExecution = (request: PendingExecution) => setPendingExecution(request);
+
+  const executeAction = () => {
+    if (!pendingExecution) return;
+
+    const { payload } = pendingExecution;
+    const timestamp = new Date().toISOString();
+    const dispatchResult = dispatcher[payload.actionType](payload);
+
+    const result: ActionExecutionResult = {
+      status: dispatchResult.status,
+      message: dispatchResult.message,
+      details: dispatchResult.details ?? payload.details,
+      timestamp,
+      actionType: payload.actionType,
+      actionLabel: EXECUTION_ACTION_LABELS[payload.actionType],
+      target: payload.target,
+      application: payload.applicationName ?? payload.appId,
+      appId: payload.appId,
+      environment: payload.environment,
+      provider: payload.provider,
+      governanceState: payload.governanceState,
+    };
+
     setRecentActions((current) => [result, ...current].slice(0, 20));
     setToast({ tone: result.status, message: result.message });
-    pendingAction.onComplete?.(result);
-    setPendingAction(null);
+    pendingExecution.onComplete?.(result);
+    setPendingExecution(null);
     window.setTimeout(() => setToast(null), 2400);
   };
 
-  const value = useMemo(() => ({ requestAction, recentActions }), [recentActions]);
+  const value = useMemo(() => ({ requestExecution, recentActions }), [recentActions]);
 
   return (
     <ActionExecutionContext.Provider value={value}>
@@ -123,40 +157,40 @@ export function ActionExecutionProvider({ children }: { children: ReactNode }) {
         </div>
       )}
 
-      {pendingAction && (
-        <section className="confirm-overlay" role="dialog" aria-modal="true" aria-label={pendingAction.confirmationTitle ?? pendingAction.actionType}>
+      {pendingExecution && (
+        <section className="confirm-overlay" role="dialog" aria-modal="true" aria-label={EXECUTION_ACTION_LABELS[pendingExecution.payload.actionType]}>
           <div className="confirm-modal">
-            <h2 className="confirm-modal__title">{pendingAction.confirmationTitle ?? pendingAction.actionType}</h2>
-            <p className="confirm-modal__summary">{pendingAction.impactSummary}</p>
+            <h2 className="confirm-modal__title">{EXECUTION_ACTION_LABELS[pendingExecution.payload.actionType]}</h2>
             <div className="confirm-modal__meta">
               <div className="confirm-modal__meta-row">
-                <span className="confirm-modal__meta-label">Application</span>
-                <span className="confirm-modal__meta-value">{pendingAction.target ?? 'No target selected'}</span>
+                <span className="confirm-modal__meta-label">Action</span>
+                <span className="confirm-modal__meta-value">{EXECUTION_ACTION_LABELS[pendingExecution.payload.actionType]}</span>
               </div>
               <div className="confirm-modal__meta-row">
-                <span className="confirm-modal__meta-label">Source</span>
-                <span className="confirm-modal__meta-value">{pendingAction.source}</span>
+                <span className="confirm-modal__meta-label">Target</span>
+                <span className="confirm-modal__meta-value">{pendingExecution.payload.target}</span>
               </div>
-              {pendingAction.environment && (
+              <div className="confirm-modal__meta-row">
+                <span className="confirm-modal__meta-label">Application</span>
+                <span className="confirm-modal__meta-value">{pendingExecution.payload.applicationName ?? pendingExecution.payload.appId}</span>
+              </div>
+              {pendingExecution.payload.environment && (
                 <div className="confirm-modal__meta-row">
                   <span className="confirm-modal__meta-label">Environment</span>
-                  <span className="confirm-modal__meta-value">{pendingAction.environment}</span>
+                  <span className="confirm-modal__meta-value">{pendingExecution.payload.environment}</span>
                 </div>
               )}
-              {pendingAction.governanceSignal && (
+              {pendingExecution.payload.governanceState && (
                 <div className="confirm-modal__meta-row">
-                  <span className="confirm-modal__meta-label">Governance</span>
-                  <span className="confirm-modal__meta-value">{pendingAction.governanceSignal}</span>
+                  <span className="confirm-modal__meta-label">Governance state</span>
+                  <span className="confirm-modal__meta-value">{pendingExecution.payload.governanceState}</span>
                 </div>
               )}
             </div>
+            <p className="confirm-modal__summary">{pendingExecution.payload.impactSummary}</p>
             <div className="confirm-actions">
-              <button type="button" className="incident-button" onClick={executePendingAction}>
-                {pendingAction.confirmLabel ?? 'Confirm'}
-              </button>
-              <button type="button" className="incident-button secondary" onClick={() => setPendingAction(null)}>
-                Cancel
-              </button>
+              <button type="button" className="incident-button" onClick={executeAction}>Confirm</button>
+              <button type="button" className="incident-button secondary" onClick={() => setPendingExecution(null)}>Cancel</button>
             </div>
           </div>
         </section>

@@ -1,14 +1,12 @@
 import { CloudApplication } from './types';
-import { ACTION_LABELS } from './execution';
+import { EXECUTION_ACTION_LABELS } from './execution';
 
 export const SHARED_ACTIONS = [
-  ACTION_LABELS.rollbackDeployment,
-  ACTION_LABELS.triggerDeployment,
-  ACTION_LABELS.switchEnvironment,
-  ACTION_LABELS.provisionEnvironment,
-  ACTION_LABELS.jumpToLogsMetrics,
-  ACTION_LABELS.openAiCompanion,
-  ACTION_LABELS.navigateApplication,
+  EXECUTION_ACTION_LABELS.ROLLBACK_DEPLOYMENT,
+  EXECUTION_ACTION_LABELS.RESTART_SERVICE,
+  'Navigate to application',
+  'Open AI companion',
+  'Jump to logs & metrics',
 ] as const;
 
 export type SharedActionLabel = (typeof SHARED_ACTIONS)[number];
@@ -19,6 +17,7 @@ export type SharedAction = {
   description: string;
   requiresApplication: boolean;
   incidentPriority?: boolean;
+  category: 'execution' | 'navigation';
 };
 
 const providerTone = (application?: CloudApplication) => {
@@ -30,45 +29,38 @@ const providerTone = (application?: CloudApplication) => {
 export const buildSharedActions = (application?: CloudApplication): SharedAction[] => [
   {
     id: 'rollback',
-    label: ACTION_LABELS.rollbackDeployment,
+    label: EXECUTION_ACTION_LABELS.ROLLBACK_DEPLOYMENT,
     description: `Revert ${application?.name ?? 'the selected application'} to its previous stable version (${providerTone(application)}).`,
     requiresApplication: true,
     incidentPriority: true,
+    category: 'execution',
   },
   {
-    id: 'trigger-deployment',
-    label: ACTION_LABELS.triggerDeployment,
-    description: `Start a new deployment for ${application?.name ?? 'the selected application'} using current release controls.`,
+    id: 'restart-service',
+    label: EXECUTION_ACTION_LABELS.RESTART_SERVICE,
+    description: `Restart core workloads for ${application?.name ?? 'the selected application'} and restore service health checks.`,
     requiresApplication: true,
-  },
-  {
-    id: 'switch-environment',
-    label: ACTION_LABELS.switchEnvironment,
-    description: `Switch between dev, staging, and prod for ${application?.name ?? 'the selected application'}.`,
-    requiresApplication: true,
-  },
-  {
-    id: 'provision-environment',
-    label: ACTION_LABELS.provisionEnvironment,
-    description: `Provision a new environment using ${providerTone(application)} defaults.`,
-    requiresApplication: true,
+    category: 'execution',
   },
   {
     id: 'jump-logs-metrics',
-    label: ACTION_LABELS.jumpToLogsMetrics,
+    label: 'Jump to logs & metrics',
     description: `Open operational telemetry for ${application?.name ?? 'the selected application'}.`,
     requiresApplication: true,
+    category: 'navigation',
   },
   {
     id: 'open-ai-companion',
-    label: ACTION_LABELS.openAiCompanion,
+    label: 'Open AI companion',
     description: 'Open the AI companion drawer to investigate with guided recommendations.',
     requiresApplication: false,
+    category: 'navigation',
   },
   {
     id: 'navigate-application',
-    label: ACTION_LABELS.navigateApplication,
+    label: 'Navigate to application',
     description: 'Navigate across assigned applications and move workspace context quickly.',
     requiresApplication: false,
+    category: 'navigation',
   },
 ];
