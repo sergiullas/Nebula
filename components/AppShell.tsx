@@ -25,22 +25,20 @@ type NavItem = {
   matchPaths?: string[];
 };
 
-const primaryNavItems: NavItem[] = [
+const coreWorkflowNavItems: NavItem[] = [
   { href: '/', label: 'Home', icon: 'home', matchPaths: ['/', '/app'] },
   { href: '/catalog', label: 'Catalog', icon: 'inventory_2', matchPaths: ['/catalog'] },
-  { label: 'Governance / Insights', icon: 'policy', isPlaceholder: true },
   { label: 'Activity / Actions', icon: 'checklist', isPlaceholder: true },
+  { label: 'Governance / Insights', icon: 'policy', isPlaceholder: true },
 ];
 
-const secondaryNavItems: NavItem[] = [
-  { label: 'My Group', icon: 'groups', isPlaceholder: true },
-  { label: 'APIs', icon: 'api', isPlaceholder: true },
+const supportingNavItems: NavItem[] = [
   { label: 'Docs', icon: 'description', isPlaceholder: true },
-  { label: 'Create', icon: 'add_circle', isPlaceholder: true },
   { label: 'Explore', icon: 'travel_explore', isPlaceholder: true },
-  { label: 'Tech Radar', icon: 'radar', isPlaceholder: true },
-  { label: 'Cost Insights', icon: 'savings', isPlaceholder: true },
-  { label: 'GraphiQL', icon: 'hub', isPlaceholder: true },
+  { label: 'APIs', icon: 'api', isPlaceholder: true },
+];
+
+const systemNavItems: NavItem[] = [
   { label: 'Notifications', icon: 'notifications', isPlaceholder: true },
   { label: 'Settings', icon: 'settings', isPlaceholder: true },
 ];
@@ -214,18 +212,103 @@ export function AppShell({ children, currentPath }: AppShellProps) {
       <aside className={`sidebar ${isSidebarCollapsed ? 'collapsed' : ''}`}>
         <div className="sidebar-top">
           <div className="brand-row">
-            <div className="brand-mark material-symbols-outlined" aria-hidden="true">cloud</div>
-            {!isSidebarCollapsed && <div className="brand">Nebula</div>}
             <button
               type="button"
-              className="sidebar-collapse-toggle"
-              onClick={() => setIsSidebarCollapsed((value) => !value)}
-              aria-label={isSidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+              className="brand-mark-button"
+              onClick={() => {
+                if (isSidebarCollapsed) {
+                  setIsSidebarCollapsed(false);
+                }
+              }}
+              aria-label={isSidebarCollapsed ? 'Expand navigation' : 'Nebula'}
             >
-              <span className="material-symbols-outlined" aria-hidden="true">
-                {isSidebarCollapsed ? 'chevron_right' : 'chevron_left'}
-              </span>
+              <span className="brand-mark material-symbols-outlined" aria-hidden="true">cloud</span>
             </button>
+
+            {!isSidebarCollapsed && (
+              <div className="brand-group">
+                <div className="brand">Nebula</div>
+                <div className="brand-subtle">Cloud Brokerage Portal</div>
+              </div>
+            )}
+
+            {!isSidebarCollapsed && (
+              <button
+                type="button"
+                className="sidebar-collapse-toggle"
+                onClick={() => setIsSidebarCollapsed(true)}
+                aria-label="Collapse sidebar"
+              >
+                <span className="material-symbols-outlined" aria-hidden="true">chevron_left</span>
+              </button>
+            )}
+          </div>
+
+          <div className="nav-sections">
+            <div>
+              {!isSidebarCollapsed && <p className="nav-section-title">Core workflow</p>}
+              <nav className="nav-list" aria-label="Core workflow navigation">
+                {coreWorkflowNavItems.map((item) => {
+                  if (item.isPlaceholder) {
+                    return (
+                      <button type="button" className="nav-link nav-link--placeholder" key={item.label} disabled>
+                        <span className="material-symbols-outlined nav-link-icon" aria-hidden="true">{item.icon}</span>
+                        {!isSidebarCollapsed && <span>{item.label}</span>}
+                      </button>
+                    );
+                  }
+
+                  return (
+                    <Link
+                      className={`nav-link ${isNavItemActive(activePath, item) ? 'active' : ''}`}
+                      key={item.href}
+                      href={item.href ?? '#'}
+                      aria-label={item.label}
+                      title={item.label}
+                    >
+                      <span className="material-symbols-outlined nav-link-icon" aria-hidden="true">{item.icon}</span>
+                      {!isSidebarCollapsed && <span>{item.label}</span>}
+                    </Link>
+                  );
+                })}
+              </nav>
+            </div>
+
+            <div className="nav-section-divider" />
+
+            <div>
+              {!isSidebarCollapsed && <p className="nav-section-title">Supporting tools</p>}
+              <nav className="nav-list" aria-label="Supporting tools navigation">
+                {supportingNavItems.map((item) => (
+                  <button type="button" className="nav-link nav-link--placeholder" key={item.label} disabled>
+                    <span className="material-symbols-outlined nav-link-icon" aria-hidden="true">{item.icon}</span>
+                    {!isSidebarCollapsed && <span>{item.label}</span>}
+                  </button>
+                ))}
+              </nav>
+            </div>
+
+            {!isSidebarCollapsed && (
+              <div className="provision-submenu" aria-hidden="true">
+                <p className="provision-submenu-title">Provision</p>
+                <p className="provision-submenu-item">Add service</p>
+                <p className="provision-submenu-item">Use template</p>
+              </div>
+            )}
+
+            <div className="nav-section-divider" />
+
+            <div>
+              {!isSidebarCollapsed && <p className="nav-section-title">System</p>}
+              <nav className="nav-list" aria-label="System navigation">
+                {systemNavItems.map((item) => (
+                  <button type="button" className="nav-link nav-link--placeholder" key={item.label} disabled>
+                    <span className="material-symbols-outlined nav-link-icon" aria-hidden="true">{item.icon}</span>
+                    {!isSidebarCollapsed && <span>{item.label}</span>}
+                  </button>
+                ))}
+              </nav>
+            </div>
           </div>
 
           {!isSidebarCollapsed && (
@@ -235,43 +318,6 @@ export function AppShell({ children, currentPath }: AppShellProps) {
               <span className="sidebar-search-hint">⌘K</span>
             </div>
           )}
-
-          <nav className="nav-list" aria-label="Primary navigation">
-            {primaryNavItems.map((item) => {
-              if (item.isPlaceholder) {
-                return (
-                  <button type="button" className="nav-link nav-link--placeholder" key={item.label} disabled>
-                    <span className="material-symbols-outlined nav-link-icon" aria-hidden="true">{item.icon}</span>
-                    {!isSidebarCollapsed && <span>{item.label}</span>}
-                  </button>
-                );
-              }
-
-              return (
-                <Link
-                  className={`nav-link ${isNavItemActive(activePath, item) ? 'active' : ''}`}
-                  key={item.href}
-                  href={item.href ?? '#'}
-                  aria-label={item.label}
-                  title={item.label}
-                >
-                  <span className="material-symbols-outlined nav-link-icon" aria-hidden="true">{item.icon}</span>
-                  {!isSidebarCollapsed && <span>{item.label}</span>}
-                </Link>
-              );
-            })}
-          </nav>
-
-          <div className="nav-section-divider" />
-
-          <nav className="nav-list nav-list--secondary" aria-label="Secondary navigation">
-            {secondaryNavItems.map((item) => (
-              <button type="button" className="nav-link nav-link--placeholder" key={item.label} disabled>
-                <span className="material-symbols-outlined nav-link-icon" aria-hidden="true">{item.icon}</span>
-                {!isSidebarCollapsed && <span>{item.label}</span>}
-              </button>
-            ))}
-          </nav>
         </div>
 
         <div className="sidebar-bottom">
