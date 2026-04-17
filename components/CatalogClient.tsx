@@ -49,6 +49,8 @@ export function CatalogClient({ application, services, currentEnvironment }: Cat
           <p className="catalog-subtitle">
             {application.provider} application context · {application.organization}
           </p>
+          <p className="catalog-decision-title">Choose how to build your application.</p>
+          <p className="catalog-decision-subtitle">Start with a template or add services.</p>
         </div>
         <div className="pill-row">
           <ProviderBadge provider={application.provider} />
