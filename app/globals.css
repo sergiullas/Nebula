@@ -175,6 +175,10 @@ textarea:focus-visible {
   color: var(--text-tertiary);
 }
 
+.sidebar-search--hidden {
+  display: none;
+}
+
 .nav-list {
   display: flex;
   flex-direction: column;
@@ -210,7 +214,7 @@ textarea:focus-visible {
 }
 
 .nav-link.active {
-  color: #0b4b77;
+  color: var(--brand-primary);
   background: var(--brand-primary-soft);
   font-weight: var(--weight-regular);
 }
@@ -338,7 +342,6 @@ textarea:focus-visible {
   color: var(--text-secondary);
   padding: var(--space-2);
   text-align: left;
-  cursor: pointer;
 }
 
 .sidebar-account-panel:hover {

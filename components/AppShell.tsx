@@ -53,7 +53,7 @@ type SidebarAccountPanelProps = {
 
 function SidebarAccountPanel({ name, role, isCollapsed }: SidebarAccountPanelProps) {
   return (
-    <button type="button" className="sidebar-account-panel" aria-label={`Signed-in account: ${name}`}>
+    <div className="sidebar-account-panel" aria-label={`Signed-in account: ${name}`}>
       <span className="sidebar-account-avatar" aria-hidden="true">{name.charAt(0)}</span>
       {!isCollapsed && (
         <span className="sidebar-account-meta">
@@ -62,7 +62,7 @@ function SidebarAccountPanel({ name, role, isCollapsed }: SidebarAccountPanelPro
         </span>
       )}
       {!isCollapsed && <span className="sidebar-account-caret" aria-hidden="true">▾</span>}
-    </button>
+    </div>
   );
 }
 
@@ -72,7 +72,7 @@ const isNavItemActive = (activePath: string, item: NavItem) => {
   }
 
   const paths = item.matchPaths ?? [item.href];
-  return paths.some((path) => (path === '/' ? activePath === '/' : activePath.startsWith(path)));
+  return paths.some((path) => (path === '/' ? activePath === '/' : activePath === path || activePath.startsWith(`${path}/`)));
 };
 
 export function AppShell({ children, currentPath }: AppShellProps) {
@@ -408,7 +408,7 @@ export function AppShell({ children, currentPath }: AppShellProps) {
           </div>
 
           {!isSidebarCollapsed && (
-            <div className="sidebar-search" aria-hidden="true">
+            <div className="sidebar-search sidebar-search--hidden" aria-hidden="true">
               <span className="material-symbols-outlined sidebar-search-icon" aria-hidden="true">search</span>
               <input type="text" value="" readOnly placeholder="Search" className="sidebar-search-input" />
               <span className="sidebar-search-hint">⌘K</span>
