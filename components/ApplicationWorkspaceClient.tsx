@@ -3,8 +3,9 @@
 import { FormEvent, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
+import { ACTION_LABELS, useActionExecution } from '@/components/execution';
 import { Badge, BadgeVariant } from '@/components/Badge';
-import { ActionStatus, AppLogsMetrics, CloudApplication, DependencyHealthStatus, HealthStatus } from '@/components/types';
+import { AppLogsMetrics, CloudApplication, DependencyHealthStatus, HealthStatus } from '@/components/types';
 import { ApplicationInsight, ApplicationInsights } from '@/components/ApplicationInsights';
 import { useApplicationInsights } from '@/hooks/useApplicationInsights';
 
@@ -79,7 +80,7 @@ const createAiResponse = (
         )
       : aiReply(
           `${application.name} in ${environment} degraded after deployment ${deploymentVersion}. Timeout-related configuration drift is the strongest signal.`,
-          { primary: 'Roll back deployment', secondary: 'Jump to logs & metrics' },
+          { primary: 'Rollback deployment', secondary: 'Jump to logs & metrics' },
         );
   }
 
@@ -92,7 +93,7 @@ const createAiResponse = (
       ? aiReply(`${application.name} in ${environment} is now ${health}. ${dependencySignal}`)
       : aiReply(
           `${application.name} in ${environment} is ${health} with elevated failures. ${dependencySignal} Both signals align with the v1.24 timeout configuration change.`,
-          { primary: 'Roll back deployment', secondary: 'Review config' },
+          { primary: 'Rollback deployment', secondary: 'Review config' },
         );
   }
 
@@ -100,7 +101,7 @@ const createAiResponse = (
     return didRunRollback
       ? aiReply(`${application.name} shows positive post-rollback trend. Continue monitoring before incident closure.`)
       : aiReply(`${application.name} needs immediate mitigation in ${health}.`, {
-          primary: 'Roll back deployment',
+          primary: 'Rollback deployment',
           secondary: 'Switch environment',
         });
   }
@@ -144,50 +145,6 @@ const createAiResponse = (
   return aiReply('I cannot answer that in this context. Try one of the suggested prompts.');
 };
 
-const getModalContent = (
-  action: string,
-  appName: string,
-  environment: string,
-) => {
-  if (action === 'Roll back deployment') {
-    return {
-      title: 'Roll back deployment',
-      summary: `This will revert ${appName} in ${environment} to the previous stable version.`,
-      consequence: 'The current deployment will be replaced. This action is logged and attributable.',
-      ctaLabel: 'Confirm rollback',
-      isDestructive: true,
-    };
-  }
-
-  if (action === 'Jump to logs & metrics') {
-    return {
-      title: 'Open logs & metrics',
-      summary: `Navigate to the Logs & metrics tab for ${appName}.`,
-      consequence: null,
-      ctaLabel: 'Open',
-      isDestructive: false,
-    };
-  }
-
-  if (action === 'Open AI companion') {
-    return {
-      title: 'Open AI companion',
-      summary: `Open the AI companion scoped to ${appName}.`,
-      consequence: null,
-      ctaLabel: 'Open',
-      isDestructive: false,
-    };
-  }
-
-  return {
-    title: action,
-    summary: `${action} will run for ${appName} in ${environment}.`,
-    consequence: null,
-    ctaLabel: 'Confirm',
-    isDestructive: false,
-  };
-};
-
 export function ApplicationWorkspaceClient({
   application,
   logsMetrics,
@@ -197,12 +154,10 @@ export function ApplicationWorkspaceClient({
   const [isCompanionOpen, setIsCompanionOpen] = useState(false);
   const [queryInput, setQueryInput] = useState('');
   const [aiResponse, setAiResponse] = useState(aiReply('Select a prompt or ask a supported question.'));
-  const [actionStatus, setActionStatus] = useState<ActionStatus>('idle');
   const [didRunRollback, setDidRunRollback] = useState(false);
   const [actionFeedback, setActionFeedback] = useState('');
   const [activeTab, setActiveTab] = useState<WorkspaceTab>('Overview');
-  const [pendingAction, setPendingAction] = useState<string | null>(null);
-  const [auditTrail, setAuditTrail] = useState<string[]>([]);
+  const { requestAction } = useActionExecution();
 
   const activeMetrics = useMemo(() => {
     if (!logsMetrics) {
@@ -266,40 +221,44 @@ export function ApplicationWorkspaceClient({
   };
 
   const executeAction = (label: string) => {
-    setPendingAction(label);
+    requestAction({
+      actionType: label as (typeof ACTION_LABELS)[keyof typeof ACTION_LABELS],
+      source: 'workspace',
+      target: application.name,
+      appId: application.id,
+      provider: application.provider,
+      environment: currentEnvironment,
+      impactSummary: `${label} will run for ${application.name} in ${currentEnvironment}.`,
+      governanceSignal: application.activeIncident ? 'Incident active' : 'Standard operation',
+      confirmLabel: `Confirm ${label.toLowerCase()}`,
+      onExecute: () => {
+        if (label === ACTION_LABELS.rollbackDeployment && logsMetrics?.rollbackSimulation && !didRunRollback) {
+          setDidRunRollback(true);
+          setActionFeedback(logsMetrics.rollbackSimulation?.aiConfirmation ?? 'Rollback simulated successfully.');
+          return { status: 'success', message: `Rollback deployment completed for ${application.name}.` };
+        }
+
+        if (label === ACTION_LABELS.jumpToLogsMetrics) {
+          setActiveTab('Logs & metrics');
+          setActionFeedback(`Opened logs & metrics for ${application.name}.`);
+          return { status: 'success', message: `Logs & metrics opened for ${application.name}.` };
+        }
+
+        if (label === ACTION_LABELS.openAiCompanion) {
+          setIsCompanionOpen(true);
+          setActionFeedback(`AI companion opened for ${application.name}.`);
+          return { status: 'success', message: `AI companion opened for ${application.name}.` };
+        }
+
+        return { status: 'success', message: `${label} completed for ${application.name}.` };
+      },
+      onComplete: (result) => {
+        if (result.status === 'failure' && !actionFeedback) {
+          setActionFeedback(result.message);
+        }
+      },
+    });
   };
-
-  const confirmAction = () => {
-    if (!pendingAction) {
-      return;
-    }
-
-    setAuditTrail((current) => [
-      `${pendingAction} · ${application.name} · ${currentEnvironment} · Devin · ${new Date().toISOString()}`,
-      ...current,
-    ]);
-
-    if (pendingAction === 'Roll back deployment' && logsMetrics?.rollbackSimulation && !didRunRollback) {
-      setActionStatus('running');
-      setActionFeedback('Simulating rollback...');
-      window.setTimeout(() => {
-        setDidRunRollback(true);
-        setActionStatus('completed');
-        setActionFeedback(logsMetrics.rollbackSimulation?.aiConfirmation ?? 'Rollback simulated successfully.');
-      }, 1500);
-    }
-
-    if (pendingAction === 'Jump to logs & metrics') {
-      setActiveTab('Logs & metrics');
-    }
-
-    if (pendingAction === 'Open AI companion') {
-      setIsCompanionOpen(true);
-    }
-
-    setPendingAction(null);
-  };
-
 
   const applicationInsights = useApplicationInsights({
     application,
@@ -356,16 +315,16 @@ export function ApplicationWorkspaceClient({
               <button
                 type="button"
                 className="incident-button"
-                onClick={() => executeAction('Roll back deployment')}
-                disabled={!logsMetrics?.rollbackSimulation || actionStatus === 'running' || didRunRollback}
+                onClick={() => executeAction('Rollback deployment')}
+                disabled={!logsMetrics?.rollbackSimulation || didRunRollback}
               >
-                {actionStatus === 'running' ? 'Rolling back...' : 'Roll back deployment'}
+Rollback deployment
               </button>
               <button type="button" className="incident-button secondary">
                 Review config
               </button>
             </div>
-            {actionStatus === 'completed' && actionFeedback && (
+            {actionFeedback && (
               <p className="incident-feedback">{actionFeedback}</p>
             )}
           </section>
@@ -517,10 +476,7 @@ export function ApplicationWorkspaceClient({
           </section>
         )}
 
-        {actionFeedback && actionStatus === 'completed' && pendingAction !== 'Roll back deployment' && (
-          <p className="action-feedback">{actionFeedback}</p>
-        )}
-        {auditTrail.length > 0 && <p className="action-feedback">Audit: {auditTrail[0]}</p>}
+        {actionFeedback && <p className="action-feedback">{actionFeedback}</p>}
       </div>
 
       <aside className={`ai-drawer ${isCompanionOpen ? 'open' : 'closed'}`} aria-label="AI companion drawer">
@@ -584,59 +540,6 @@ export function ApplicationWorkspaceClient({
         </div>
       </aside>
 
-      {pendingAction && (() => {
-        const modal = getModalContent(
-          pendingAction,
-          application.name,
-          currentEnvironment,
-        );
-        return (
-          <section
-            className="confirm-overlay"
-            role="dialog"
-            aria-modal="true"
-            aria-label={modal.title}
-          >
-            <div className={`confirm-modal ${modal.isDestructive ? 'confirm-modal--destructive' : ''}`}>
-              <h2 className="confirm-modal__title">{modal.title}</h2>
-              <p className="confirm-modal__summary">{modal.summary}</p>
-              {modal.consequence && (
-                <p className="confirm-modal__consequence">{modal.consequence}</p>
-              )}
-              <div className="confirm-modal__meta">
-                <div className="confirm-modal__meta-row">
-                  <span className="confirm-modal__meta-label">Application</span>
-                  <span className="confirm-modal__meta-value">{application.name}</span>
-                </div>
-                <div className="confirm-modal__meta-row">
-                  <span className="confirm-modal__meta-label">Environment</span>
-                  <span className="confirm-modal__meta-value">{currentEnvironment}</span>
-                </div>
-                <div className="confirm-modal__meta-row">
-                  <span className="confirm-modal__meta-label">Confirmed by</span>
-                  <span className="confirm-modal__meta-value">Devin</span>
-                </div>
-              </div>
-              <div className="confirm-actions">
-                <button
-                  type="button"
-                  className={modal.isDestructive ? 'incident-button' : 'incident-button secondary'}
-                  onClick={confirmAction}
-                >
-                  {modal.ctaLabel}
-                </button>
-                <button
-                  type="button"
-                  className="incident-button secondary"
-                  onClick={() => setPendingAction(null)}
-                >
-                  Cancel
-                </button>
-              </div>
-            </div>
-          </section>
-        );
-      })()}
     </section>
   );
 }
