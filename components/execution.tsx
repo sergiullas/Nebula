@@ -113,6 +113,9 @@ const dispatcher: Record<ExecutionActionType, (payload: ExecutionActionPayload) 
       return {
         status: 'success',
         message: `Template applied successfully: ${payload.target} added to ${payload.applicationName ?? payload.appId}.${createdSummary}`,
+        details: payload.includedServices?.length
+          ? `Services: ${payload.includedServices.join(', ')}`
+          : undefined,
       };
     }
 
@@ -120,14 +123,18 @@ const dispatcher: Record<ExecutionActionType, (payload: ExecutionActionPayload) 
       return {
         status: 'success',
         message: `Template request submitted: ${payload.target} for ${payload.applicationName ?? payload.appId}.${createdSummary}`,
-        details: 'Pending approval before services are activated.',
+        details: payload.includedServices?.length
+          ? `Pending approval before services are activated. Services: ${payload.includedServices.join(', ')}`
+          : 'Pending approval before services are activated.',
       };
     }
 
     return {
       status: 'success',
       message: `Template exception submitted: ${payload.target} for ${payload.applicationName ?? payload.appId}.${createdSummary}`,
-      details: 'Contains discouraged services and requires exception review.',
+      details: payload.includedServices?.length
+        ? `Contains discouraged services and requires exception review. Services: ${payload.includedServices.join(', ')}`
+        : 'Contains discouraged services and requires exception review.',
     };
   },
   RESTART_SERVICE: (payload) => ({

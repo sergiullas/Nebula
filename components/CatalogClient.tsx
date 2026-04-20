@@ -66,9 +66,9 @@ export function CatalogClient({ application, services, currentEnvironment }: Cat
           <Link href={`/templates?appId=${application.id}&env=${currentEnvironment}`} className="incident-button">
             Start with template
           </Link>
-          <span className="incident-button secondary" aria-hidden="true">
-            Add services individually below
-          </span>
+          <Link href={`/app/${application.id}/catalog?env=${currentEnvironment}`} className="incident-button secondary" aria-current="page">
+            Add services individually
+          </Link>
         </div>
       </section>
       <nav className="catalog-tabs" aria-label="Service categories">
