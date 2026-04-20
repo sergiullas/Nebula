@@ -1804,14 +1804,34 @@ textarea:focus-visible {
 }
 
 .home-focus-block {
-  border-color: var(--border-medium);
-  background: var(--bg-primary);
-  padding: var(--space-5);
+  border-color: var(--border-strong);
+  background: var(--bg-secondary);
+  padding: var(--space-6);
 }
 
 .home-focus-block .detail-impact-note {
   margin: 0 0 var(--space-3);
   line-height: var(--leading-normal);
+}
+
+.home-section {
+  padding: var(--space-6);
+  border-bottom: 0;
+}
+
+.home-section + .home-section {
+  border-top: var(--border-width) solid var(--border-default);
+  padding-top: var(--space-7);
+}
+
+.home-section .templates-section-header {
+  margin-bottom: var(--space-3);
+}
+
+.home-section .templates-section-label {
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+  letter-spacing: 0.03em;
 }
 
 .home-focus-link {
@@ -1829,16 +1849,11 @@ textarea:focus-visible {
   display: flex;
   align-items: center;
   gap: var(--space-3);
-  margin-top: var(--space-4);
+  margin-top: var(--space-5);
 }
 
 .home-focus-primary-cta {
   padding: var(--space-3) var(--space-4);
-}
-
-.home-section--applications .templates-section-header,
-.home-section--systems .templates-section-header {
-  margin-bottom: var(--space-3);
 }
 
 .home-application-row {
@@ -1854,6 +1869,14 @@ textarea:focus-visible {
 
 .home-application-row__meta {
   gap: var(--space-2);
+  align-items: center;
+}
+
+.home-application-row .pill {
+  background: transparent;
+  color: var(--text-secondary);
+  border-color: var(--border-default);
+  font-weight: var(--weight-regular);
 }
 
 .home-inline-link {
@@ -1870,6 +1893,8 @@ textarea:focus-visible {
 .home-activity-row,
 .home-system-row {
   background: transparent;
+  border-color: var(--border-default);
+  padding: var(--space-3);
 }
 
 .home-supporting-insights {
@@ -1879,6 +1904,12 @@ textarea:focus-visible {
 .home-supporting-insight-row {
   background: transparent;
   border-color: var(--border-default);
+  padding: var(--space-3);
+}
+
+.home-section--systems .templates-section-label,
+.home-section--systems .templates-section-hint {
+  color: var(--text-tertiary);
 }
 
 .templates-grid {
