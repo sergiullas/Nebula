@@ -157,7 +157,7 @@ export function ApplicationWorkspaceClient({
   const [didRunRollback, setDidRunRollback] = useState(false);
   const [actionFeedback, setActionFeedback] = useState('');
   const [activeTab, setActiveTab] = useState<WorkspaceTab>('Overview');
-  const { requestExecution } = useActionExecution();
+  const { requestExecution, templateCreatedServices } = useActionExecution();
 
   const activeMetrics = useMemo(() => {
     if (!logsMetrics) {
@@ -174,6 +174,11 @@ export function ApplicationWorkspaceClient({
   const unhealthyDependencies = useMemo(
     () => dependencies.filter((dependency) => dependency.health === 'Critical' || dependency.health === 'Degraded'),
     [dependencies],
+  );
+
+  const appTemplateServices = useMemo(
+    () => templateCreatedServices[application.id] ?? [],
+    [application.id, templateCreatedServices],
   );
 
   const activeHealth = useMemo<HealthStatus>(() => {
@@ -440,22 +445,35 @@ Rollback deployment
               <h2 className="section-title">Service dependencies</h2>
               <div className="toggle-row">
                 <Link
-                  href="/templates"
-                  className="incident-button secondary"
+                  href={`/templates?appId=${application.id}&env=${currentEnvironment}`}
+                  className="incident-button"
                 >
-                  Browse Templates
+                  Start with template
                 </Link>
                 <Link
-                  href={`/app/${application.id}/catalog`}
-                  className="incident-button add-service-cta"
+                  href={`/app/${application.id}/catalog?env=${currentEnvironment}`}
+                  className="incident-button secondary add-service-cta"
                 >
-                  + Add service
+                  Add service individually
                 </Link>
               </div>
             </div>
             <p className="placeholder muted">
-              Templates provision a governed set of services into {application.name} — a faster starting point than adding services individually.
+              Templates are the recommended default path for {application.name}. Context is preserved for provider {application.provider} and environment {currentEnvironment}.
             </p>
+
+            {appTemplateServices.length > 0 && (
+              <section className="detail-why-block" style={{ marginBottom: 14 }}>
+                <p className="detail-why-block-label">TEMPLATE-CREATED SERVICES</p>
+                <p className="detail-impact-note">Lineage: template → created services → {application.name}</p>
+                {appTemplateServices.map((service) => (
+                  <p key={service.id} className="detail-impact-note">
+                    {service.serviceName} · Template origin: {service.templateName} · {service.status === 'applied' ? 'Applied' : 'Pending approval'}
+                  </p>
+                ))}
+              </section>
+            )}
+
             <div className="dependency-list">
               {dependencies.map((dependency) => (
                 <article key={dependency.name} className="dependency-row">
@@ -463,12 +481,36 @@ Rollback deployment
                   <div className="dependency-main">
                     <p className="dependency-row__name">{dependency.name}</p>
                     <p className="dependency-row__detail">{dependency.metadata}</p>
+                    <p className="dependency-row__detail">Added individually</p>
                   </div>
                   <div className="dependency-row__badges">
                     <Badge variant={dependency.provider === 'AWS' ? 'aws' : dependency.provider === 'GCP' ? 'gcp' : 'unknown'}>
                       {dependency.provider}
                     </Badge>
                     <Badge variant={dependencyClass[dependency.health]}>{dependency.health}</Badge>
+                  </div>
+                </article>
+              ))}
+
+              {appTemplateServices.map((service) => (
+                <article key={service.id} className="dependency-row">
+                  <span className="dependency-row__dot dependency-row__dot--healthy" />
+                  <div className="dependency-main">
+                    <p className="dependency-row__name">{service.serviceName}</p>
+                    <p className="dependency-row__detail">
+                      Added by template: {service.templateName} · Application: {service.applicationName}
+                    </p>
+                    <p className="dependency-row__detail">Lineage: {service.templateName} → {service.serviceName} → {application.name}</p>
+                  </div>
+                  <div className="dependency-row__badges">
+                    {service.provider && (
+                      <Badge variant={service.provider === 'AWS' ? 'aws' : service.provider === 'GCP' ? 'gcp' : 'unknown'}>
+                        {service.provider}
+                      </Badge>
+                    )}
+                    <Badge variant={service.status === 'applied' ? 'healthy' : 'degraded'}>
+                      {service.status === 'applied' ? 'Template applied' : 'Pending approval'}
+                    </Badge>
                   </div>
                 </article>
               ))}

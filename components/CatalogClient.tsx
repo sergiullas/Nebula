@@ -50,7 +50,7 @@ export function CatalogClient({ application, services, currentEnvironment }: Cat
             {application.provider} application context · {application.organization}
           </p>
           <p className="catalog-decision-title">Choose how to build your application.</p>
-          <p className="catalog-decision-subtitle">Start with a template or add services.</p>
+          <p className="catalog-decision-subtitle">Start with template (recommended) or add services individually (advanced).</p>
         </div>
         <div className="pill-row">
           <ProviderBadge provider={application.provider} />
@@ -58,6 +58,19 @@ export function CatalogClient({ application, services, currentEnvironment }: Cat
         </div>
       </header>
 
+      <section className="templates-layer-note" style={{ marginBottom: 16 }}>
+        <p className="templates-layer-note-text">
+          <strong>Recommended:</strong> Start with template for governed architecture acceleration.
+        </p>
+        <div className="toggle-row" style={{ marginTop: 10 }}>
+          <Link href={`/templates?appId=${application.id}&env=${currentEnvironment}`} className="incident-button">
+            Start with template
+          </Link>
+          <span className="incident-button secondary" aria-hidden="true">
+            Add services individually below
+          </span>
+        </div>
+      </section>
       <nav className="catalog-tabs" aria-label="Service categories">
         {categories.map((cat) => (
           <button

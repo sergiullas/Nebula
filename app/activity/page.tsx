@@ -33,6 +33,7 @@ export default function ActivityPage() {
                       {entry.governanceState ? ` · Governance: ${entry.governanceState}` : ''}
                     </p>
                     {entry.message && <p className="dependency-row__detail">Result: {entry.message}</p>}
+                    {entry.details && <p className="dependency-row__detail">Details: {entry.details}</p>}
                   </div>
                   <div className="dependency-row__badges">
                     <span className={`pill ${entry.status === 'success' ? 'gov-approved' : 'gov-discouraged'}`}>{entry.status}</span>
