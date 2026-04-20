@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { CloudApplication, CloudTemplate, TemplateGovernanceState, TemplateWorkloadType, TemplateComplexity } from '@/components/types';
@@ -105,7 +105,7 @@ function TemplateCard({
       },
       onComplete: () => {
         if (application) {
-          router.push(`/app/${application.id}`);
+          router.push(`/app/${application.id}?env=${environment}`);
         }
       },
     });
@@ -162,6 +162,10 @@ export function TemplatesClient({ templates, application, currentEnvironment }: 
   const [activeProvider, setActiveProvider] = useState<string>(application?.provider ?? ALL);
   const [activeComplexity, setActiveComplexity] = useState<string>(ALL);
   const [showAll, setShowAll] = useState(false);
+
+  useEffect(() => {
+    setActiveProvider(application?.provider ?? ALL);
+  }, [application?.id, application?.provider]);
 
   const allWorkloads = Array.from(new Set(templates.map((t) => t.type)));
   const allProviders = Array.from(new Set(templates.map((t) => t.provider)));

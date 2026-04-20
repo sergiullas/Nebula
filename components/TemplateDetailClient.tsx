@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { CloudApplication, CloudTemplate, TemplateGovernanceState } from '@/components/types';
 import { EXECUTION_ACTIONS, useActionExecution } from '@/components/execution';
 
@@ -30,44 +30,59 @@ const governanceClass: Record<TemplateGovernanceState, string> = {
   'includes-restricted': 'gov-discouraged',
 };
 
-const getEnvironmentDefault = (template: CloudTemplate, env?: string) => {
-  const environmentParam = template.parameters.find((param) => param.id === 'environment');
-  if (env && environmentParam?.options.includes(env)) {
-    return env;
-  }
-  return environmentParam?.default ?? env ?? 'dev';
-};
+const buildInitialParamValues = (template: CloudTemplate, envOverride?: string) =>
+  Object.fromEntries(
+    template.parameters.map((param) => {
+      if (param.id === 'environment' && envOverride && param.options.includes(envOverride)) {
+        return [param.id, envOverride];
+      }
+      return [param.id, param.default];
+    }),
+  );
 
-const getRegionDefault = (template: CloudTemplate) => {
-  const regionParam = template.parameters.find((param) => param.id === 'region');
-  return regionParam?.default ?? 'provider-default';
-};
-
-const getSizeTierDefault = (template: CloudTemplate) => {
-  const sizeParam = template.parameters.find((param) => /size|instance|node|tier/i.test(param.id));
-  return sizeParam?.default ?? 'standard';
+const getParamValue = (values: Record<string, string>, template: CloudTemplate, idMatcher: (id: string) => boolean, fallback: string) => {
+  const entry = template.parameters.find((param) => idMatcher(param.id));
+  return (entry ? values[entry.id] : undefined) ?? fallback;
 };
 
 export function TemplateDetailClient({ template, application, currentEnvironment }: TemplateDetailClientProps) {
-  const [environment, setEnvironment] = useState(getEnvironmentDefault(template, currentEnvironment));
-  const [region, setRegion] = useState(getRegionDefault(template));
-  const [sizeTier, setSizeTier] = useState(getSizeTierDefault(template));
+  const [paramValues, setParamValues] = useState<Record<string, string>>(() =>
+    buildInitialParamValues(template, currentEnvironment),
+  );
   const [outcome, setOutcome] = useState<TemplateOutcome>(null);
   const { requestExecution } = useActionExecution();
+
+  useEffect(() => {
+    setParamValues(buildInitialParamValues(template, currentEnvironment));
+    setOutcome(null);
+  }, [template, application?.id, currentEnvironment]);
 
   const appName = application?.name ?? 'Template Catalog';
   const appId = application?.id ?? 'template-catalog';
   const appProvider = application?.provider ?? template.provider;
+
+  const environment = getParamValue(paramValues, template, (id) => id === 'environment', currentEnvironment ?? 'dev');
+  const region = getParamValue(paramValues, template, (id) => id === 'region', 'provider-default');
+  const sizeTier = getParamValue(paramValues, template, (id) => /size|instance|node|tier/i.test(id), 'standard');
 
   const backToTemplatesHref = application
     ? `/templates?appId=${application.id}&env=${environment}`
     : '/templates';
 
   const backToServicesHref = application
-    ? `/app/${application.id}`
+    ? `/app/${application.id}?env=${environment}`
     : '/templates';
 
+  const editableParameterCount = useMemo(
+    () => template.parameters.filter((param) => param.editable).length,
+    [template.parameters],
+  );
+
   const handleUseTemplate = () => {
+    const allConfiguredValues = template.parameters
+      .map((param) => `${param.label}: ${paramValues[param.id] ?? param.default}`)
+      .join(' · ');
+
     requestExecution({
       payload: {
         actionType: EXECUTION_ACTIONS.USE_TEMPLATE,
@@ -81,7 +96,7 @@ export function TemplateDetailClient({ template, application, currentEnvironment
         includedServices: template.services.map((service) => service.name),
         region,
         sizeTier,
-        details: `Region: ${region} · Size/tier: ${sizeTier}`,
+        details: allConfiguredValues,
         impactSummary: `Apply ${template.name} to ${appName}. This will create ${template.services.length} services with template origin lineage in Services.`,
       },
       onComplete: () => {
@@ -191,30 +206,36 @@ export function TemplateDetailClient({ template, application, currentEnvironment
 
           <section className="detail-config-section">
             <p className="detail-section-label">CONFIGURATION</p>
-            <div className="detail-config-field">
-              <label className="detail-config-label" htmlFor="template-env">Environment</label>
-              <select id="template-env" className="detail-config-select" value={environment} onChange={(event) => setEnvironment(event.target.value)}>
-                {(template.parameters.find((param) => param.id === 'environment')?.options ?? [environment]).map((option) => (
-                  <option key={option} value={option}>{option}</option>
-                ))}
-              </select>
-            </div>
-            <div className="detail-config-field">
-              <label className="detail-config-label" htmlFor="template-region">Region</label>
-              <select id="template-region" className="detail-config-select" value={region} onChange={(event) => setRegion(event.target.value)}>
-                {(template.parameters.find((param) => param.id === 'region')?.options ?? [region]).map((option) => (
-                  <option key={option} value={option}>{option}</option>
-                ))}
-              </select>
-            </div>
-            <div className="detail-config-field">
-              <label className="detail-config-label" htmlFor="template-size">Size / tier</label>
-              <select id="template-size" className="detail-config-select" value={sizeTier} onChange={(event) => setSizeTier(event.target.value)}>
-                {(template.parameters.find((param) => /size|instance|node|tier/i.test(param.id))?.options ?? [sizeTier]).map((option) => (
-                  <option key={option} value={option}>{option}</option>
-                ))}
-              </select>
-            </div>
+            <p className="detail-impact-note" style={{ marginBottom: 12 }}>
+              {editableParameterCount} editable parameter{editableParameterCount === 1 ? '' : 's'} available for this template.
+            </p>
+            {template.parameters.map((param) => {
+              const value = paramValues[param.id] ?? param.default;
+              return (
+                <div key={param.id} className="detail-config-field">
+                  <label className="detail-config-label" htmlFor={`template-param-${param.id}`}>{param.label}</label>
+                  {param.editable ? (
+                    <select
+                      id={`template-param-${param.id}`}
+                      className="detail-config-select"
+                      value={value}
+                      onChange={(event) => setParamValues((prev) => ({ ...prev, [param.id]: event.target.value }))}
+                    >
+                      {param.options.map((option) => (
+                        <option key={option} value={option}>{option}</option>
+                      ))}
+                    </select>
+                  ) : (
+                    <>
+                      <div className="template-param-locked-field">{value}</div>
+                      {param.lockedReason && (
+                        <p className="template-param-locked-reason">{param.lockedReason}</p>
+                      )}
+                    </>
+                  )}
+                </div>
+              );
+            })}
           </section>
 
           <section className="detail-why-section">

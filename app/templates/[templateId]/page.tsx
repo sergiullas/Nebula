@@ -23,6 +23,7 @@ export default function TemplatePage({ params, searchParams }: TemplatePageProps
   return (
     <AppShell>
       <TemplateDetailClient
+        key={`${template.id}-${application?.id ?? 'global'}-${searchParams.env ?? 'none'}`}
         template={template}
         application={application}
         currentEnvironment={searchParams.env}
