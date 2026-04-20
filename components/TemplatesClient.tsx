@@ -3,6 +3,7 @@
 import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import { CloudTemplate, TemplateGovernanceState, TemplateWorkloadType, TemplateComplexity } from '@/components/types';
+import { buildCardRecommendation, getTone } from '@/components/templateRecommender';
 
 type TemplatesClientProps = {
   templates: CloudTemplate[];
@@ -85,7 +86,13 @@ const summarizeConstraints = (template: CloudTemplate) => {
 };
 
 function TemplateCard({ template }: { template: CloudTemplate }) {
-  const recommendation = toSentence(template.aiInsight.fit);
+  const tone = getTone(template.governanceState, template.aiInsight.confidence);
+  const recommendation = buildCardRecommendation(
+    template.governanceState,
+    template.aiInsight.confidence,
+    template.aiInsight.fit,
+    workloadLabels[template.type],
+  );
   const purpose = toSentence(template.purpose);
   const rationale = toSentence(template.rationale);
 
@@ -106,9 +113,9 @@ function TemplateCard({ template }: { template: CloudTemplate }) {
 
         <p className="template-card-purpose">{purpose}</p>
 
-        <div className="template-card-ai-signal" style={{ marginTop: 12 }}>
-          <span className="template-card-confidence">Recommendation</span>
-          <span>{recommendation}</span>
+        <div className={`template-card-ai-signal template-card-ai-signal--${tone}`} style={{ marginTop: 12 }}>
+          <span className={`template-card-ai-dot template-card-ai-dot--${tone}`} aria-hidden="true" />
+          <span className="template-card-ai-text">{recommendation}</span>
         </div>
 
         <div className="template-card-services" style={{ marginTop: 12 }}>
@@ -165,7 +172,7 @@ export function TemplatesClient({ templates }: TemplatesClientProps) {
         <div className="templates-header-text">
           <h1 className="templates-title">Templates</h1>
           <p className="templates-subtitle">
-            Pre-approved architecture patterns for common workloads. Each template encodes platform best practices,
+            Pre-approved architecture patterns for common workloads. Each template encodes approved defaults,
             governance constraints, and cost guidance — so you start from a known, safe baseline.
           </p>
         </div>

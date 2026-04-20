@@ -1865,13 +1865,37 @@ textarea:focus-visible {
 
 .template-card-ai-signal {
   display: flex;
-  flex-direction: column;
   align-items: flex-start;
-  gap: 2px;
+  gap: 7px;
 }
 
-.template-card-confidence {
-  font-size: var(--text-xs);
+.template-card-ai-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  margin-top: 4px;
+}
+
+.template-card-ai-dot--strong { background: var(--health-healthy); }
+.template-card-ai-dot--qualified { background: var(--health-degraded); }
+.template-card-ai-dot--caution { background: var(--text-tertiary); }
+
+.template-card-ai-text {
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+  line-height: var(--leading-normal);
+}
+
+.template-card-ai-signal--strong .template-card-ai-text {
+  color: var(--text-secondary);
+}
+
+.template-card-ai-signal--qualified .template-card-ai-text {
+  color: var(--text-primary);
+}
+
+.template-card-ai-signal--caution .template-card-ai-text {
   color: var(--text-tertiary);
 }
 
@@ -2125,11 +2149,49 @@ textarea:focus-visible {
   padding: var(--space-4);
 }
 
-.template-ai-confidence {
+.template-ai-tone-row {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  margin-bottom: var(--space-3);
+  padding-bottom: var(--space-3);
+  border-bottom: var(--border-width) solid var(--border-default);
+}
+
+.template-ai-summary {
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  color: var(--text-primary);
+  line-height: var(--leading-normal);
+  margin: 0;
+}
+
+.template-ai-evidence {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.template-ai-evidence-layer {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.template-ai-evidence-label {
+  font-size: var(--text-xs);
+  font-weight: var(--weight-medium);
+  color: var(--text-tertiary);
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-wider);
+  margin: 0;
+}
+
+.template-ai-confidence-row {
   display: flex;
   align-items: center;
-  gap: var(--space-3);
-  margin-bottom: var(--space-4);
+  gap: var(--space-2);
+  margin-top: var(--space-1);
 }
 
 .template-ai-confidence-bar {
@@ -2152,18 +2214,6 @@ textarea:focus-visible {
   font-weight: var(--weight-medium);
   color: var(--text-info);
   white-space: nowrap;
-}
-
-.template-ai-facts {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-3);
-}
-
-.template-ai-fact {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
 }
 
 .template-ai-fact-label {

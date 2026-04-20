@@ -85,6 +85,13 @@ const constraintRulesByTemplate: Record<string, Record<string, ConstraintRule>> 
       exceptionPath: 'Request a governed exception through Cloud Platform review workflow.',
     },
   },
+  'high-performance-data-lakehouse': {
+    region: {
+      blockedValues: ['us-east1'],
+      explanation: 'us-east1 is not approved for Bigtable workloads under current ACME data residency controls.',
+      suggestedAlternative: 'us-central1',
+    },
+  },
 };
 
 const groupLabelForParam = (paramId: string, label: string) => {
@@ -571,34 +578,63 @@ function TemplateSidebar({ template }: TemplateSidebarProps) {
 
       <div className="detail-sidebar-block template-ai-block">
         <p className="detail-sidebar-label">AI INSIGHTS</p>
-        <div className="template-ai-confidence">
-          <div className="template-ai-confidence-bar">
-            <div
-              className="template-ai-confidence-fill"
-              style={{ width: `${template.aiInsight.confidence}%` }}
-            />
-          </div>
-          <span className="template-ai-confidence-label">{template.aiInsight.confidence}% confidence</span>
+
+        <div className={`template-ai-tone-row template-ai-tone--${getTone(template.governanceState, template.aiInsight.confidence)}`}>
+          <span
+            className={`template-card-ai-dot template-card-ai-dot--${getTone(template.governanceState, template.aiInsight.confidence)}`}
+            aria-hidden="true"
+          />
+          <p className="template-ai-summary">
+            {buildCardRecommendation(
+              template.governanceState,
+              template.aiInsight.confidence,
+              template.aiInsight.fit,
+            )}
+          </p>
         </div>
-        <div className="template-ai-facts">
-          <div className="template-ai-fact">
-            <p className="template-ai-fact-label">FIT</p>
-            <p className="detail-sidebar-text">{template.aiInsight.fit}</p>
+
+        <div className="template-ai-evidence">
+          <div className="template-ai-evidence-layer">
+            <p className="template-ai-evidence-label">Why this fits</p>
+            {buildSupportingReasons(
+              template.governanceState,
+              template.aiInsight.fit,
+              template.aiInsight.cost,
+            ).map((reason) => (
+              <p key={reason} className="detail-impact-note">{reason}</p>
+            ))}
           </div>
-          <div className="template-ai-fact">
-            <p className="template-ai-fact-label">COST</p>
+
+          <div className="template-ai-evidence-layer">
+            <p className="template-ai-evidence-label">Cost signal</p>
             <p className="detail-sidebar-text">{template.aiInsight.cost}</p>
           </div>
-          <div className="template-ai-fact">
-            <p className="template-ai-fact-label">RISK</p>
+
+          <div className="template-ai-evidence-layer">
+            <p className="template-ai-evidence-label">Risk</p>
             <p className="detail-sidebar-text">{template.aiInsight.risk}</p>
           </div>
-        </div>
-        <div style={{ marginTop: 8 }}>
-          <p className="template-ai-fact-label">EVIDENCE</p>
-          {template.aiInsight.evidence.map((e) => (
-            <p key={e} className="detail-impact-note">{e}</p>
-          ))}
+
+          {template.aiInsight.evidence.length > 0 && (
+            <div className="template-ai-evidence-layer">
+              <p className="template-ai-evidence-label">Evidence used</p>
+              {template.aiInsight.evidence.map((e) => (
+                <p key={e} className="detail-impact-note">{e}</p>
+              ))}
+            </div>
+          )}
+
+          <div className="template-ai-confidence-row">
+            <div className="template-ai-confidence-bar">
+              <div
+                className="template-ai-confidence-fill"
+                style={{ width: `${template.aiInsight.confidence}%` }}
+              />
+            </div>
+            <span className="template-ai-confidence-label">
+              {template.aiInsight.confidence}% confidence
+            </span>
+          </div>
         </div>
       </div>
 

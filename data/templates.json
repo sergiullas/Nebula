@@ -236,7 +236,7 @@
       "Memorystore instance size if cache is enabled"
     ],
     "scalingBehavior": "BigQuery and Cloud Storage scale automatically with data volume. Costs are query-driven — partitioning and clustering are strongly recommended to control scan costs.",
-    "rationale": "This template provides a best-practice GCP analytics stack. BigQuery's serverless query engine eliminates cluster management overhead. Cloud Storage provides a cost-effective landing zone. The optional Memorystore layer serves aggregated results to APIs without re-querying BigQuery on every request.",
+    "rationale": "This template provides a governed GCP analytics stack. BigQuery's serverless query engine eliminates cluster management overhead. Cloud Storage provides a cost-effective landing zone. The optional Memorystore layer serves aggregated results to APIs without re-querying BigQuery on every request.",
     "tradeoffs": [
       "BigQuery requires approval — provisioning timeline extends by 1–2 business days",
       "Query costs are variable and require FinOps monitoring and query optimization",
@@ -609,7 +609,7 @@
       "Event-Driven Microservice template — if the workload is write-heavy with schema flexibility"
     ],
     "aiInsight": {
-      "fit": "Ideal for internal services, admin tools, and early-stage APIs. Not recommended for customer-facing services with unpredictable traffic.",
+      "fit": "Well-suited for internal services, admin tools, and early-stage APIs with modest and predictable traffic. Not recommended for customer-facing services with unpredictable traffic.",
       "cost": "Lowest cost of all approved templates. Predictable and easy to forecast. FinOps Tier-1 policy applies.",
       "risk": "Very low risk. Single fully-approved service with no data residency restrictions. Primary operational risk is database connection exhaustion under unexpected traffic.",
       "confidence": 95,
@@ -639,5 +639,173 @@
     "provider": "GCP",
     "complexity": "low",
     "tags": ["api", "relational", "gcp", "approved", "lightweight"]
+  },
+  {
+    "id": "high-performance-data-lakehouse",
+    "name": "High-Performance Data Lakehouse",
+    "type": "data-pipeline",
+    "owner": "Cloud Platform Lead",
+    "version": "1.0.0",
+    "lastUpdated": "2026-03-28",
+    "purpose": "A high-throughput data lakehouse architecture combining managed object storage, a serverless query engine, and a dedicated analytics accelerator. Designed for teams processing petabyte-scale datasets with sub-second query requirements. Includes components that are currently restricted for most ACME organisations.",
+    "recommendedFor": [
+      "Petabyte-scale analytics with strict query latency requirements",
+      "Teams with dedicated data platform engineering ownership",
+      "Workloads requiring real-time and batch query serving from a single store"
+    ],
+    "notRecommendedFor": [
+      "Standard analytics teams without dedicated data engineering support",
+      "Organisations without approved exception for restricted components",
+      "Transactional or operational workloads (use Scalable REST API template)",
+      "Teams without FinOps approval for high-cost infrastructure"
+    ],
+    "services": [
+      {
+        "serviceId": "gcp-cloud-storage",
+        "name": "GCP Cloud Storage",
+        "role": "Primary data lake storage layer",
+        "required": true,
+        "provider": "GCP",
+        "governance": "approved",
+        "category": "Storage"
+      },
+      {
+        "serviceId": "gcp-bigquery",
+        "name": "GCP BigQuery",
+        "role": "Serverless analytical query engine",
+        "required": true,
+        "provider": "GCP",
+        "governance": "requires-approval",
+        "category": "Analytics"
+      },
+      {
+        "serviceId": "gcp-bigtable",
+        "name": "GCP Bigtable",
+        "role": "Low-latency NoSQL accelerator for real-time query serving",
+        "required": true,
+        "provider": "GCP",
+        "governance": "discouraged",
+        "category": "Database"
+      },
+      {
+        "serviceId": "gcp-dataflow",
+        "name": "GCP Dataflow",
+        "role": "Managed stream and batch data processing",
+        "required": false,
+        "provider": "GCP",
+        "governance": "discouraged",
+        "category": "Processing"
+      }
+    ],
+    "parameters": [
+      {
+        "id": "environment",
+        "label": "Environment",
+        "options": ["dev", "prod"],
+        "default": "dev",
+        "editable": true
+      },
+      {
+        "id": "region",
+        "label": "Region",
+        "options": ["us-central1", "us-east1"],
+        "default": "us-central1",
+        "editable": true,
+        "lockedReason": null
+      },
+      {
+        "id": "storage_class",
+        "label": "Storage class",
+        "options": ["Standard", "Nearline"],
+        "default": "Standard",
+        "editable": true
+      },
+      {
+        "id": "bigtable_nodes",
+        "label": "Bigtable node count",
+        "options": ["1", "3"],
+        "default": "1",
+        "editable": false,
+        "lockedReason": "Bigtable node count is locked pending exception approval. Contact the Cloud Platform team to request a higher allocation."
+      },
+      {
+        "id": "provider",
+        "label": "Cloud provider",
+        "options": ["GCP"],
+        "default": "GCP",
+        "editable": false,
+        "lockedReason": "This template is certified for GCP only. Provider cannot be changed."
+      }
+    ],
+    "governanceState": "includes-restricted",
+    "approvedComponents": [
+      "GCP Cloud Storage"
+    ],
+    "restrictedOptions": [
+      "GCP Bigtable",
+      "GCP Dataflow"
+    ],
+    "requiresApprovalElements": [
+      "GCP BigQuery"
+    ],
+    "policySources": [
+      "ACME Data Platform Policy v2.1",
+      "FinOps High-Cost Infrastructure Review",
+      "Security Baseline — NoSQL Tier 2"
+    ],
+    "estimatedMonthlyCost": {
+      "min": 480,
+      "max": 1800
+    },
+    "costDrivers": [
+      "Bigtable node hours are the dominant cost — scales with node count and uptime",
+      "BigQuery query cost scales with data scanned per query",
+      "Storage cost is predictable and low relative to compute"
+    ],
+    "scalingBehavior": "Cost scales non-linearly with Bigtable node count and BigQuery scan volume. High variance expected in early stages.",
+    "rationale": "Designed for organisations with mature data platform teams that need petabyte-scale query performance with real-time serving. This template is intentionally restricted for general use because Bigtable and Dataflow require specialist operational knowledge and carry significant cost exposure without careful management.",
+    "tradeoffs": [
+      "Bigtable adds significant operational complexity compared to Memorystore",
+      "Dataflow requires data engineering expertise to manage pipelines safely",
+      "Cost variance is high — budget overruns are a real risk without FinOps oversight",
+      "Restricted components require exception approval before provisioning can proceed"
+    ],
+    "alternatives": [
+      "Real-Time Analytics Pipeline template — uses approved components with lower operational overhead",
+      "ML Inference Service template — if the primary need is model-serving rather than query acceleration"
+    ],
+    "aiInsight": {
+      "fit": "This template is designed for specialist data platform teams with petabyte-scale needs. It includes components that are currently restricted for most ACME organisations and requires exception documentation before provisioning.",
+      "cost": "Estimated $480–$1,800 per month with high variance. Bigtable node hours and BigQuery query volume are the primary cost drivers. FinOps review is required before production provisioning.",
+      "risk": "Two included services — Bigtable and Dataflow — are restricted under current ACME policy. Provisioning will not proceed without a governed exception. Operational complexity is significantly higher than alternative templates.",
+      "confidence": 62,
+      "evidence": [
+        "GCP Bigtable is classified as restricted under ACME Data Platform Policy v2.1",
+        "GCP Dataflow requires specialist pipeline management — not approved for self-service",
+        "Historical cost data shows 3x overage risk in first 90 days without FinOps governance"
+      ]
+    },
+    "executionPreview": {
+      "resourcesCreated": [
+        "GCP Cloud Storage bucket with lifecycle policy",
+        "GCP BigQuery dataset (pending approval)",
+        "GCP Bigtable instance — 1 node (restricted — exception required)",
+        "GCP Dataflow job template (restricted — exception required)",
+        "IAM service account with scoped permissions"
+      ],
+      "actionsPerformed": [
+        "Storage bucket tagging with team, project, and environment labels",
+        "FinOps cost allocation tag registration",
+        "Exception request submitted to Cloud Platform team for restricted services"
+      ],
+      "integrationsTriggered": [
+        "Security baseline compliance scan",
+        "FinOps high-cost infrastructure review notification",
+        "Platform team approval workflow triggered for Bigtable and Dataflow"
+      ]
+    },
+    "provider": "GCP",
+    "complexity": "high",
+    "tags": ["data-platform", "lakehouse", "high-cost", "restricted", "specialist"]
   }
 ]
