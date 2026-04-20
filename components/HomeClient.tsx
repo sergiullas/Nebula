@@ -143,7 +143,6 @@ export function HomeClient() {
         <section className="templates-section">
           <div className="templates-section-header">
             <p className="templates-section-label">Focus</p>
-            <p className="templates-section-hint">What should I do now?</p>
           </div>
           {focusInsight ? (
             <article className="detail-why-block home-focus-block">
@@ -154,8 +153,8 @@ export function HomeClient() {
                 <button type="button" className="incident-button" onClick={() => executeRecommendedAction(focusInsight)}>
                   {EXECUTION_ACTION_LABELS[focusInsight.actionType]}
                 </button>
-                <Link href={focusInsight.href} className="incident-button secondary" style={{ textDecoration: 'none' }}>
-                  Review context
+                <Link href={focusInsight.href} className="home-focus-link">
+                  View details
                 </Link>
               </div>
             </article>
@@ -167,7 +166,6 @@ export function HomeClient() {
         <section className="templates-section">
           <div className="templates-section-header">
             <p className="templates-section-label">My Applications</p>
-            <p className="templates-section-hint">What exists?</p>
           </div>
           <div className="dependency-list">
             {mockApplications.map((app) => (
@@ -193,10 +191,9 @@ export function HomeClient() {
         <section className="templates-section">
           <div className="templates-section-header">
             <p className="templates-section-label">Activity</p>
-            <p className="templates-section-hint">What happened?</p>
           </div>
           {recent.length === 0 ? (
-            <p className="placeholder muted">No recent actions yet.</p>
+            <p className="placeholder muted">No recent actions. Run a template or action to populate this section.</p>
           ) : (
             <div className="dependency-list">
               {recent.map((entry) => (
@@ -235,7 +232,6 @@ export function HomeClient() {
         <section className="templates-section">
           <div className="templates-section-header">
             <p className="templates-section-label">Systems</p>
-            <p className="templates-section-hint">Read-only grouping (tertiary)</p>
           </div>
           <div className="dependency-list">
             {systems.map(([systemName, apps]) => (

@@ -1808,6 +1808,17 @@ textarea:focus-visible {
   background: var(--bg-info);
 }
 
+.home-focus-block .detail-impact-note {
+  margin: 0;
+  line-height: 1.4;
+}
+
+.home-focus-link {
+  font-size: var(--text-sm);
+  color: var(--text-info);
+  text-decoration: underline;
+}
+
 .templates-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
