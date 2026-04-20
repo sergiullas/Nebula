@@ -94,7 +94,9 @@ Risks:
 
 ### Phase 2.1 / 2.1A — AI Companion
 
-Status: ⚠️ Partial
+Phase 2.1A — AI Companion
+
+Status: 🟢 Complete
 
 What exists:
 
