@@ -25,8 +25,10 @@ export type ExecutionActionPayload = {
   provider?: string;
   governanceState?: string;
   details?: string;
+  templateId?: string;
   templateName?: string;
   includedServices?: string[];
+  configurationParameters?: Array<{ label: string; value: string }>;
   region?: string;
   sizeTier?: string;
   impactSummary: string;
@@ -51,7 +53,10 @@ export type TemplateCreatedService = {
   id: string;
   appId: string;
   applicationName: string;
+  source: 'template';
+  templateId: string;
   templateName: string;
+  configurationParameters?: Array<{ label: string; value: string }>;
   serviceName: string;
   provider?: string;
   environment?: string;
@@ -182,10 +187,16 @@ export function ActionExecutionProvider({ children }: { children: ReactNode }) {
         setTemplateCreatedServices((current) => {
           const currentAppServices = current[payload.appId] ?? [];
           const nextServices = services.map((serviceName, index) => ({
-            id: `${payload.appId}-${payload.templateName ?? payload.target}-${serviceName}-${timestamp}-${index}`,
+            id: `${payload.appId}-${payload.templateId ?? payload.templateName ?? payload.target}-${serviceName}-${timestamp}-${index}`,
             appId: payload.appId,
             applicationName: payload.applicationName ?? payload.appId,
+            source: 'template' as const,
+            templateId: payload.templateId ?? payload.target,
             templateName: payload.templateName ?? payload.target,
+            configurationParameters: payload.configurationParameters?.map((parameter) => ({
+              label: parameter.label,
+              value: parameter.value,
+            })),
             serviceName,
             provider: payload.provider,
             environment: payload.environment,
@@ -265,13 +276,34 @@ export function ActionExecutionProvider({ children }: { children: ReactNode }) {
                   <span className="confirm-modal__meta-value">{pendingExecution.payload.includedServices.join(', ')}</span>
                 </div>
               )}
+              {pendingExecution.payload.actionType === EXECUTION_ACTIONS.USE_TEMPLATE && (
+                <div className="confirm-modal__meta-row">
+                  <span className="confirm-modal__meta-label">Estimated impact</span>
+                  <span className="confirm-modal__meta-value">{pendingExecution.payload.includedServices?.length ?? 0} services</span>
+                </div>
+              )}
+              {pendingExecution.payload.actionType === EXECUTION_ACTIONS.USE_TEMPLATE && pendingExecution.payload.configurationParameters && pendingExecution.payload.configurationParameters.length > 0 && (
+                <div className="confirm-modal__meta-row">
+                  <span className="confirm-modal__meta-label">Configuration</span>
+                  <span className="confirm-modal__meta-value">
+                    {pendingExecution.payload.configurationParameters.map((parameter) => `${parameter.label}: ${parameter.value}`).join(' · ')}
+                  </span>
+                </div>
+              )}
             </div>
             <p className="confirm-modal__summary">{pendingExecution.payload.impactSummary}</p>
             {pendingExecution.payload.actionType === EXECUTION_ACTIONS.USE_TEMPLATE && pendingExecution.payload.governanceState === 'requires-approval' && (
               <p className="confirm-modal__summary">This template requires approval before services are activated.</p>
             )}
+            {pendingExecution.payload.actionType === EXECUTION_ACTIONS.USE_TEMPLATE && pendingExecution.payload.governanceState === 'includes-restricted' && (
+              <p className="confirm-modal__summary">Warning: This template contains discouraged services. Confirm override to continue with exception review.</p>
+            )}
             <div className="confirm-actions">
-              <button type="button" className="incident-button" onClick={executeAction}>Confirm</button>
+              <button type="button" className="incident-button" onClick={executeAction}>
+                {pendingExecution.payload.actionType === EXECUTION_ACTIONS.USE_TEMPLATE && pendingExecution.payload.governanceState === 'includes-restricted'
+                  ? 'Confirm override'
+                  : 'Confirm'}
+              </button>
               <button type="button" className="incident-button secondary" onClick={() => setPendingExecution(null)}>Cancel</button>
             </div>
           </div>

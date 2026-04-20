@@ -90,10 +90,16 @@ function TemplateCard({
     : `/templates/${template.id}`;
 
   const handleUseTemplate = () => {
+    const defaultConfiguration = template.parameters.map((parameter) => ({
+      label: parameter.label,
+      value: parameter.default,
+    }));
+
     requestExecution({
       payload: {
         actionType: EXECUTION_ACTIONS.USE_TEMPLATE,
         target: template.name,
+        templateId: template.id,
         templateName: template.name,
         appId,
         applicationName: appName,
@@ -101,6 +107,7 @@ function TemplateCard({
         environment,
         governanceState: template.governanceState,
         includedServices: template.services.map((service) => service.name),
+        configurationParameters: defaultConfiguration,
         impactSummary: `Apply ${template.name} to ${appName}. ${template.services.length} services will be added with template lineage.`,
       },
       onComplete: () => {

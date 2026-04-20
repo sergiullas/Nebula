@@ -468,7 +468,7 @@ Rollback deployment
                 <p className="detail-impact-note">Lineage: template → created services → {application.name}</p>
                 {appTemplateServices.map((service) => (
                   <p key={service.id} className="detail-impact-note">
-                    {service.serviceName} · Template origin: {service.templateName} · {service.status === 'applied' ? 'Applied' : 'Pending approval'}
+                    {service.serviceName} · Created from template: {service.templateName} · {service.status === 'applied' ? 'Applied' : 'Pending approval'}
                   </p>
                 ))}
               </section>
@@ -498,9 +498,9 @@ Rollback deployment
                   <div className="dependency-main">
                     <p className="dependency-row__name">{service.serviceName}</p>
                     <p className="dependency-row__detail">
-                      Added by template: {service.templateName} · Application: {service.applicationName}
+                      Created from template: {service.templateName} · Application: {service.applicationName}
                     </p>
-                    <p className="dependency-row__detail">Lineage: {service.templateName} → {service.serviceName} → {application.name}</p>
+                    <p className="dependency-row__detail">Lineage: {service.templateName} ({service.templateId}) → {service.serviceName} → {application.name}</p>
                   </div>
                   <div className="dependency-row__badges">
                     {service.provider && (

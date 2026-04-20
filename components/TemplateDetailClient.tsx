@@ -79,14 +79,19 @@ export function TemplateDetailClient({ template, application, currentEnvironment
   );
 
   const handleUseTemplate = () => {
-    const allConfiguredValues = template.parameters
-      .map((param) => `${param.label}: ${paramValues[param.id] ?? param.default}`)
+    const configuredParameters = template.parameters.map((param) => ({
+      label: param.label,
+      value: paramValues[param.id] ?? param.default,
+    }));
+    const allConfiguredValues = configuredParameters
+      .map((parameter) => `${parameter.label}: ${parameter.value}`)
       .join(' · ');
 
     requestExecution({
       payload: {
         actionType: EXECUTION_ACTIONS.USE_TEMPLATE,
         target: template.name,
+        templateId: template.id,
         templateName: template.name,
         appId,
         applicationName: appName,
@@ -94,6 +99,7 @@ export function TemplateDetailClient({ template, application, currentEnvironment
         governanceState: template.governanceState,
         environment,
         includedServices: template.services.map((service) => service.name),
+        configurationParameters: configuredParameters,
         region,
         sizeTier,
         details: allConfiguredValues,
@@ -263,7 +269,7 @@ export function TemplateDetailClient({ template, application, currentEnvironment
               <p className="provision-outcome-body">{outcome.body}</p>
               <p className="provision-outcome-body">{outcome.detail}</p>
               <Link href={backToServicesHref} className="incident-button" style={{ display: 'inline-block', textDecoration: 'none', marginTop: 8 }}>
-                View resulting Services
+                View Services
               </Link>
             </section>
           )}

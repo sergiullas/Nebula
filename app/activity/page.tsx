@@ -22,11 +22,14 @@ export default function ActivityPage() {
           <div className="dependency-list" role="log" aria-label="Recent actions">
             {recentActions.map((entry) => {
               const context = [entry.provider, entry.environment].filter(Boolean).join(' / ');
+              const actionHeadline = entry.actionType === 'USE_TEMPLATE'
+                ? `Applied template: ${entry.target}`
+                : entry.actionLabel;
               return (
                 <article key={`${entry.timestamp}-${entry.actionType}-${entry.target}`} className="dependency-row">
                   <div className="dependency-main">
                     <p className="dependency-row__name">
-                      {entry.actionLabel} — {entry.application}{context ? ` (${context})` : ''} — {entry.status === 'success' ? 'Success' : 'Failure'}
+                      {actionHeadline} — {entry.application}{context ? ` (${context})` : ''} — {entry.status === 'success' ? 'Success' : 'Failure'}
                     </p>
                     <p className="dependency-row__detail">
                       Target: {entry.target} · {new Date(entry.timestamp).toLocaleString()}
