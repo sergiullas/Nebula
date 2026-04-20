@@ -34,7 +34,7 @@ You are building a decision environment, not a generic web application.
 
 Before any implementation:
 
-* Read README.md, AGENTS.md, STATE.md, and the active spec — in that order
+* Read README.md, AGENTS.md,  SYSTEM_STATE.md, and the active spec — in that order
 * Summarize your understanding before proposing changes
 * If something is unclear, ask. Do not assume
 
