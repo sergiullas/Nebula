@@ -56,6 +56,7 @@ export type TemplateCreatedService = {
   source: 'template';
   templateId: string;
   templateName: string;
+  configurationParameters?: Array<{ label: string; value: string }>;
   serviceName: string;
   provider?: string;
   environment?: string;
@@ -192,6 +193,10 @@ export function ActionExecutionProvider({ children }: { children: ReactNode }) {
             source: 'template' as const,
             templateId: payload.templateId ?? payload.target,
             templateName: payload.templateName ?? payload.target,
+            configurationParameters: payload.configurationParameters?.map((parameter) => ({
+              label: parameter.label,
+              value: parameter.value,
+            })),
             serviceName,
             provider: payload.provider,
             environment: payload.environment,
