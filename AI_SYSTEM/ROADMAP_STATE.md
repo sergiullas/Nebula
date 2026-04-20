@@ -1,21 +1,5 @@
 # Phase Roadmap and System State
 
-## Usage Rule
-
-This document is required context for:
-
-- Architect
-- PO / UX Advisor
-- AI-dev-team (when reasoning about system behavior)
-
-This document is NOT a source of implementation details.
-
-Feature specifications and phase instructions take precedence for coding.
-
-If a conflict exists:
-- Specs define implementation
-- This document defines system direction
-
 ## 0. Purpose
 
 This document is the single source of truth for the current state of the Cloud Brokerage Portal.
@@ -29,16 +13,36 @@ It answers:
 5. What should be done next
 
 This document does NOT contain implementation details.
+
 It is used by the Architect, PO/UX Advisor, and AI-dev-team to stay aligned.
+
+---
+
+## Usage Rule
+
+This document is required context for:
+
+- Architect
+- PO / UX Advisor
+- AI-dev-team (when reasoning about system behavior)
+
+This document is NOT a source of implementation details.
+
+Feature specifications and phase instructions take precedence for coding.
+
+If a conflict exists:
+
+- Specs define implementation
+- This document defines system direction
 
 ---
 
 ## 1. Status Legend
 
-* ❌ Not started
-* ⚠️ Partial (implemented but not compliant)
-* ✅ Strong (aligned and usable)
-* 🟢 Complete (fully aligned with phase intent)
+- ❌ Not started  
+- ⚠️ Partial (implemented but not compliant)  
+- ✅ Strong (aligned and usable)  
+- 🟢 Complete (fully aligned with phase intent)
 
 ---
 
@@ -50,10 +54,10 @@ Application → Services → Catalog → Decision → Provision → Outcome
 
 Core Rules:
 
-1. Decision-first, not configuration-first
-2. Context must always be visible (application + provider)
-3. Governance must be explicit and explainable
-4. AI advises, humans decide, system executes
+1. Decision-first, not configuration-first  
+2. Context must always be visible (application + provider)  
+3. Governance must be explicit and explainable  
+4. AI advises, humans decide, system executes  
 
 ---
 
@@ -61,227 +65,162 @@ Core Rules:
 
 ---
 
-## Phase 0 — Foundation
+### Phase 0 — Foundation
+
+Status: 🟢 Complete
+
+---
+
+### Phase 1 — Insight Layer
+
+Status: ✅ Strong
+
+---
+
+### Phase 2 — Action Layer
+
+Status: ⚠️ Partial
+
+Gaps:
+
+- Outcome feedback not fully standardized across all actions  
+- Some action behaviors still inconsistent at edges  
+
+Risks:
+
+- Actions may feel uneven across entry points  
+
+---
+
+### Phase 2.1 / 2.1A — AI Companion
+
+Status: ⚠️ Partial
+
+What exists:
+
+- Right-edge drawer  
+- Context-aware prompts  
+- User-invoked interaction  
+
+Gaps:
+
+- Responses not structured (Diagnosis / Likely cause / Next step)  
+- Tone still partially chat-like  
+- Separation between AI guidance and execution not fully enforced  
+
+Risks:
+
+- Trust erosion due to inconsistent AI output  
+- Drift toward generic chatbot experience  
+
+---
+
+### Phase 3 — Execution Layer
 
 Status: 🟢 Complete
 
 What exists:
 
-1. Custom application shell
-2. My Applications view
-3. Application workspace
-4. Routing and provider awareness
+- Centralized execution dispatcher  
+- Shared confirmation model  
+- Standardized action payloads  
+- Navigation vs execution separation  
+- Global action log (decision trace)  
 
-Gaps:
+Notes:
 
-* None significant
-
-Risks:
-
-* None
+- This is the system backbone  
+- All execution must route through this layer  
 
 ---
 
-## Phase 1 — Insight Layer
+### Phase 3.5 — UI Alignment
+
+Status: 🟢 Complete
+
+What exists:
+
+- Backstage-aligned information architecture  
+- Simplified navigation model  
+- Consistent UI patterns across system  
+
+Rule:
+
+- UI is considered stable  
+- No structural UI redesign should occur  
+- Focus shifts to behavioral integration  
+
+---
+
+### Phase 4 — Catalog & Governed Provisioning
 
 Status: ✅ Strong
 
 What exists:
 
-1. Incident detection on application cards
-2. Metrics and logs
-3. Incident banner
-4. AI summary at app level
-5. Recommended next action (rollback)
+- App-scoped catalog  
+- Provider-scoped services  
+- Decision-first service cards  
+- Governance-aware provisioning flows  
+- Confirmation and outcome states  
 
 Gaps:
 
-1. AI interpretation not fully embedded inside Logs & Metrics view
-2. Logs and metrics separation weakens evidence + interpretation model
-3. Deployments tab underdeveloped
+- Service detail explainability still limited  
+- Post-provision traceability incomplete  
+- Service lineage not visible  
 
 Risks:
 
-1. Users may rely on overview instead of evidence
-2. Weak inspection path reduces trust in AI
+- Reduced trust if reasoning is not inspectable  
+- Weak feedback loop after provisioning  
 
 ---
 
-## Phase 2 — Action Layer
+### Phase 4A — Templates (Behavioral Integration Layer)
 
-Status: ⚠️ Partial
+Status: 🚧 In Progress
 
 What exists:
 
-1. Rollback action
-2. Confirmation interaction
-3. UI state updates after action
+- Template listing and detail flows  
+- Governance and cost visibility  
+- Template execution via dispatcher  
+- Basic Services integration  
 
 Gaps:
 
-1. Action behavior not consistent across system
-2. Outcome feedback not standardized
+1. Templates are not yet the default decision path  
+2. Weak linkage between templates and Services tab  
+3. No clear lineage (template → services → application)  
+4. Post-provision visibility is insufficient  
+5. Template prioritization is shallow  
 
 Risks:
 
-1. Actions may feel disconnected
-2. System does not yet feel deterministic
+- Templates remain a parallel system instead of core flow  
+- Marketplace drift  
+- Loss of system coherence  
 
 ---
 
-## Phase 2.1 — AI Companion
+### Phase 5 — AI Behavior Layer
 
-Status: ⚠️ Partial
+Status: ❌ Blocked
 
-What exists:
+Rule:
 
-1. Right-edge drawer
-2. User-invoked interaction
-3. Context-aware prompts
-4. Basic AI responses
-
-Gaps:
-
-1. Responses not structured (Diagnosis / Likely cause / Next step)
-2. Feels too chat-like
-3. Prompt hierarchy not fully guiding behavior
-
-Risks:
-
-1. Trust erosion due to inconsistent AI output
-2. Drift toward generic chatbot experience
-
----
-
-## Phase 2.1A — AI Refinement
-
-Status: ⚠️ Partial
-
-What exists:
-
-1. State-aware prompts
-2. Controlled interaction model
-
-Gaps:
-
-1. Structured response format not enforced
-2. Tone not fully aligned with enterprise context
-3. Separation of concerns (AI vs actions) is inconsistent
-
-Risks:
-
-1. AI begins to compete with execution layer
-2. Loss of clarity in decision flow
-
----
-
-## Phase 3 — Execution Layer
-
-Status: ⚠️ Partial
-
-What exists:
-
-1. Command palette (Cmd+K)
-2. Shared action vocabulary (partial)
-3. Confirmation interactions
-4. Basic action tracking (local state)
-
-Gaps:
-
-1. No single reusable confirmation component
-2. No unified execution flow across entry points
-3. No visible recent action log
-4. Command palette and workspace actions not fully aligned
-
-Risks:
-
-1. Multiple execution patterns confuse users
-2. Loss of accountability and traceability
-
----
-
-## Phase 4 — Catalog & Governed Provisioning
-
-Status: ✅ Strong
-
-What exists:
-
-1. Services tab entry
-2. App-scoped catalog
-3. Provider-scoped services
-4. Service cards (fit, governance, cost)
-5. Service detail page
-6. Governance-aware provisioning flows
-7. Confirmation and outcome states
-
-Gaps:
-
-1. Global catalog route inconsistent or incomplete
-2. Post-provision traceability limited
-3. Service lineage not visible
-
-Risks:
-
-1. Confusion between global vs app-scoped entry
-2. Reduced trust due to lack of history and lineage
-
----
-
-## Phase 4A — Templates (Decision Accelerators)
-
-Status: ⚠️ Strong UI, Partial Integration
-
-What exists:
-
-1. Template listing and cards
-2. Template detail flow (inspect → configure → review → done)
-3. Governance visibility at template level
-4. Included services explanation
-5. Cost estimation
-6. Policy constraints
-
-Gaps:
-
-1. Templates not clearly the default entry path
-2. Not fully app-scoped in behavior
-3. No strong prioritization (best match vs alternatives)
-4. Weak connection to Services tab after provisioning
-5. No lineage (template → services relationship not visible)
-6. No unified execution integration with Phase 3
-
-Risks:
-
-1. Templates become parallel system instead of core flow
-2. Marketplace drift (detached experience)
-3. Loss of system coherence
-
----
-
-## Phase 5 — AI Behavior Layer
-
-Status: ❌ Not Started
-
-Planned capabilities:
-
-1. Recommendation ranking
-2. Trade-off explanation
-3. Cross-signal reasoning (cost, performance, policy)
-4. Optimization insights
-
-Risks:
-
-1. Premature implementation may destabilize earlier phases
+- Do not begin Phase 5 until Phase 4A is complete  
 
 ---
 
 ## 4. Cross-Phase Gaps (System-Level)
 
-1. No unified execution model
-2. No unified confirmation system
-3. No visible system-wide action log
-4. No clear lineage (who did what, via which path)
-5. AI behavior inconsistent across contexts
-6. Templates not fully integrated into core model
+1. AI companion not aligned with execution model  
+2. Template → Service → Application lineage not visible  
+3. Post-execution clarity is weak  
+4. Execution trace exists but not fully surfaced in UX  
+5. Templates not yet the dominant decision path  
 
 ---
 
@@ -289,37 +228,38 @@ Risks:
 
 We implement only enough depth to:
 
-1. Demonstrate decision flow
-2. Demonstrate governance behavior
-3. Demonstrate execution outcome
+1. Demonstrate decision flow  
+2. Demonstrate governance behavior  
+3. Demonstrate execution outcome  
 
 We do NOT implement:
 
-* full backend logic
-* exhaustive configuration
-* production-grade edge cases
+- full backend logic  
+- exhaustive configuration  
+- production-grade edge cases  
 
 ---
 
-## 6. Current Priority (Architect Recommendation)
+## 6. Current Priority (Locked)
+
+Focus on system convergence.
+
+1. Integrate templates into core system behavior (Phase 4A)  
+2. Align AI companion with structured responses (Phase 2.1A)  
+3. Strengthen execution visibility (traceability + lineage)  
+4. Ensure templates drive decision → execution → outcome flow  
 
 Do NOT move to Phase 5 yet.
-
-Focus on convergence:
-
-1. Unify execution model (Phase 3)
-2. Standardize AI response structure (Phase 2.1A)
-3. Integrate templates into system (Phase 4A)
-4. Add traceability (action log + lineage)
 
 ---
 
 ## 7. Next Actions
 
-1. Create Phase 4A Templates instructions document
-2. Create Phase 3 convergence delta spec
-3. Update AI companion to structured responses
-4. Introduce system-wide action log
+1. Implement Phase 4A Templates Integration  
+2. Introduce template → services lineage  
+3. Improve post-provision visibility in Services tab  
+4. Align AI companion response structure  
+5. Strengthen action log visibility and meaning  
 
 ---
 
