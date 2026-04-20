@@ -199,6 +199,14 @@ SESSION END
 - Suggestions must be presented, not implemented
 
 ---
+### 5.10 Data Model Integrity
+
+- Do not replace dynamic data-driven systems with hardcoded UI
+- UI must reflect underlying data models, not override them
+- If a model supports extensibility, the UI must preserve it
+- Any restriction of dynamic behavior must be explicitly approved
+
+---
 
 ## 6. What Requires Human Approval
 
