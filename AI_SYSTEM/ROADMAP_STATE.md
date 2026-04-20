@@ -1,5 +1,21 @@
 # Phase Roadmap and System State
 
+## Usage Rule
+
+This document is required context for:
+
+- Architect
+- PO / UX Advisor
+- AI-dev-team (when reasoning about system behavior)
+
+This document is NOT a source of implementation details.
+
+Feature specifications and phase instructions take precedence for coding.
+
+If a conflict exists:
+- Specs define implementation
+- This document defines system direction
+
 ## 0. Purpose
 
 This document is the single source of truth for the current state of the Cloud Brokerage Portal.
