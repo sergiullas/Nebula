@@ -666,10 +666,10 @@ Rollback deployment
             {appTemplateServices.length > 0 && (
               <section className="detail-why-block" style={{ marginBottom: 14 }}>
                 <p className="detail-why-block-label">TEMPLATE-CREATED SERVICES</p>
-                <p className="detail-impact-note">Lineage: template → created services → {application.name}</p>
+                <p className="detail-impact-note">Application → Architecture → Services</p>
                 {appTemplateServices.map((service) => (
                   <p key={service.id} className="detail-impact-note">
-                    {service.serviceName} · Created from template: {service.templateName} · {service.status === 'applied' ? 'Applied' : 'Pending approval'}
+                    Architecture: {service.templateName} · {service.serviceName} · {service.status === 'applied' ? 'Applied' : 'Pending approval'}
                   </p>
                 ))}
               </section>
@@ -697,9 +697,10 @@ Rollback deployment
                 <article key={service.id} className="dependency-row">
                   <span className="dependency-row__dot dependency-row__dot--healthy" />
                   <div className="dependency-main">
+                    <p className="dependency-row__detail">Architecture: {service.templateName}</p>
                     <p className="dependency-row__name">{service.serviceName}</p>
                     <p className="dependency-row__detail">
-                      Created from template: {service.templateName} · Application: {service.applicationName}
+                      Part of architecture: {service.templateName} · Application: {service.applicationName}
                     </p>
                     <p className="dependency-row__detail">Lineage: {service.templateName} ({service.templateId}) → {service.serviceName} → {application.name}</p>
                   </div>
