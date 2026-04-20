@@ -187,7 +187,7 @@ export function ActionExecutionProvider({ children }: { children: ReactNode }) {
         setTemplateCreatedServices((current) => {
           const currentAppServices = current[payload.appId] ?? [];
           const nextServices = services.map((serviceName, index) => ({
-            id: `${payload.appId}-${payload.templateName ?? payload.target}-${serviceName}-${timestamp}-${index}`,
+            id: `${payload.appId}-${payload.templateId ?? payload.templateName ?? payload.target}-${serviceName}-${timestamp}-${index}`,
             appId: payload.appId,
             applicationName: payload.applicationName ?? payload.appId,
             source: 'template' as const,
