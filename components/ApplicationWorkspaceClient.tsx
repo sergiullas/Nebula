@@ -18,8 +18,11 @@ type ApplicationWorkspaceClientProps = {
 type WorkspaceTab = 'Overview' | 'Logs & metrics' | 'Deployments' | 'Services';
 
 type InlineAction = {
-  primary?: string;
-  secondary?: string;
+  label: string;
+  executionActionType: (typeof EXECUTION_ACTIONS)[keyof typeof EXECUTION_ACTIONS];
+  target: string;
+  impactSummary: string;
+  details?: string;
 };
 
 const tabs: WorkspaceTab[] = ['Overview', 'Logs & metrics', 'Deployments', 'Services'];
@@ -60,7 +63,26 @@ const dependencyClass: Record<DependencyHealthStatus, BadgeVariant> = {
   Unknown: 'unknown',
 };
 
-const aiReply = (message: string, action?: InlineAction) => ({ message, action });
+type CompanionResponse = {
+  diagnosis: string;
+  likelyCause: string;
+  recommendedAction: string;
+  recommendedActionReasoning: string;
+  action: InlineAction;
+};
+
+const aiReply = (
+  diagnosis: string,
+  likelyCause: string,
+  recommendedActionReasoning: string,
+  action: InlineAction,
+): CompanionResponse => ({
+  diagnosis,
+  likelyCause,
+  recommendedAction: action.label,
+  recommendedActionReasoning,
+  action,
+});
 
 const createAiResponse = (
   query: string,
@@ -70,79 +92,200 @@ const createAiResponse = (
   deploymentVersion: string,
   didRunRollback: boolean,
   unhealthyDependencies: string[],
+  templateServiceCount: number,
+  lastActionLabel?: string,
 ) => {
   const normalizedQuery = query.trim().toLowerCase();
+  const unhealthySummary = unhealthyDependencies.length > 0
+    ? `Services currently degraded: ${unhealthyDependencies.join(', ')}.`
+    : 'No degraded services are currently reported.';
+  const templateSummary = templateServiceCount > 0
+    ? `${templateServiceCount} template-created services are already attached to this application.`
+    : 'No template-created services are attached to this application.';
+  const recentActionSummary = lastActionLabel
+    ? `Most recent executed action: ${lastActionLabel}.`
+    : 'No recent execution action is logged in this session.';
 
   if (normalizedQuery === 'what changed?') {
     return didRunRollback
       ? aiReply(
-          `${application.name} in ${environment} is now running ${deploymentVersion} after rollback. The prior release likely introduced unstable timeout behavior.`,
+          `${application.name} is running ${deploymentVersion} in ${environment} after rollback.`,
+          `Recent deployment history indicates timeout behavior drift in the prior release. ${recentActionSummary}`,
+          'Continue monitoring recovery. If errors rise again, execute a targeted service restart.',
+          {
+            label: 'Restart degraded service',
+            executionActionType: EXECUTION_ACTIONS.RESTART_SERVICE,
+            target: unhealthyDependencies[0] ?? `${application.name} primary dependency`,
+            impactSummary: 'Restart the most affected dependency to stabilize request flow.',
+          },
         )
       : aiReply(
-          `${application.name} in ${environment} degraded after deployment ${deploymentVersion}. Timeout-related configuration drift is the strongest signal.`,
-          { primary: 'Rollback deployment', secondary: 'Jump to logs & metrics' },
+          `${application.name} degraded after deployment ${deploymentVersion} in ${environment}.`,
+          `Health state is ${health} with elevated failures after deployment. Timeout configuration drift is the dominant signal. ${unhealthySummary}`,
+          'Rollback the deployment through the execution dispatcher to restore the previous stable version.',
+          {
+            label: 'Rollback deployment',
+            executionActionType: EXECUTION_ACTIONS.ROLLBACK_DEPLOYMENT,
+            target: application.name,
+            impactSummary: 'Revert service to previous deployment version.',
+          },
         );
   }
 
   if (normalizedQuery === 'what is likely broken?') {
-    const dependencySignal = unhealthyDependencies.length
-      ? `Unhealthy dependencies detected: ${unhealthyDependencies.join(', ')}.`
-      : 'No unhealthy dependencies are currently reported.';
-
     return didRunRollback
-      ? aiReply(`${application.name} in ${environment} is now ${health}. ${dependencySignal}`)
+      ? aiReply(
+          `${application.name} is ${health} in ${environment} after rollback.`,
+          `${unhealthySummary} ${recentActionSummary}`,
+          'Restart one degraded dependency through execution to complete recovery.',
+          {
+            label: 'Restart degraded service',
+            executionActionType: EXECUTION_ACTIONS.RESTART_SERVICE,
+            target: unhealthyDependencies[0] ?? `${application.name} primary dependency`,
+            impactSummary: 'Restart the most affected dependency to stabilize request flow.',
+          },
+        )
       : aiReply(
-          `${application.name} in ${environment} is ${health} with elevated failures. ${dependencySignal} Both signals align with the v1.24 timeout configuration change.`,
-          { primary: 'Rollback deployment', secondary: 'Review config' },
+          `${application.name} is ${health} with elevated failures in ${environment}.`,
+          `${unhealthySummary} Both service health and deployment timing align with the latest timeout configuration change.`,
+          'Execute rollback now to remove the failing configuration set from production traffic.',
+          {
+            label: 'Rollback deployment',
+            executionActionType: EXECUTION_ACTIONS.ROLLBACK_DEPLOYMENT,
+            target: application.name,
+            impactSummary: 'Revert service to previous deployment version.',
+          },
         );
   }
 
   if (normalizedQuery === 'what should i do next?') {
     return didRunRollback
-      ? aiReply(`${application.name} shows positive post-rollback trend. Continue monitoring before incident closure.`)
-      : aiReply(`${application.name} needs immediate mitigation in ${health}.`, {
-          primary: 'Rollback deployment',
-          secondary: 'Switch environment',
-        });
+      ? aiReply(
+          `${application.name} is trending toward recovery after rollback.`,
+          `${unhealthySummary} ${recentActionSummary}`,
+          'Execute a targeted restart for the most degraded service to finalize stabilization.',
+          {
+            label: 'Restart degraded service',
+            executionActionType: EXECUTION_ACTIONS.RESTART_SERVICE,
+            target: unhealthyDependencies[0] ?? `${application.name} primary dependency`,
+            impactSummary: 'Restart the most affected dependency to stabilize request flow.',
+          },
+        )
+      : aiReply(
+          `${application.name} requires immediate mitigation while health is ${health}.`,
+          `Active incident plus elevated failures indicates current deployment is unstable in ${environment}.`,
+          'Execute rollback deployment through confirmation flow.',
+          {
+            label: 'Rollback deployment',
+            executionActionType: EXECUTION_ACTIONS.ROLLBACK_DEPLOYMENT,
+            target: application.name,
+            impactSummary: 'Revert service to previous deployment version.',
+          },
+        );
   }
 
   if (normalizedQuery === 'how is this app performing?') {
     return aiReply(
-      `${application.name} in ${environment} is healthy. Error rate is within normal thresholds and no incidents are active. Last deployment ${application.lastDeployment} is stable.`,
+      `${application.name} is healthy in ${environment} and within normal reliability thresholds.`,
+      `${unhealthySummary} ${templateSummary}`,
+      'Execute a template rollout to enforce a standardized baseline before future scale changes.',
+      {
+        label: 'Apply baseline template',
+        executionActionType: EXECUTION_ACTIONS.USE_TEMPLATE,
+        target: `${application.provider} baseline template`,
+        impactSummary: 'Apply a standardized template baseline for operational consistency.',
+      },
     );
   }
 
   if (normalizedQuery === 'any optimization opportunities?') {
     return aiReply(
-      `No critical optimizations flagged at this time. Review the Application insights section on the Overview tab for proactive signals.`,
+      `${application.name} has no critical reliability gap, but optimization opportunity exists.`,
+      `Current state is stable and supports low-risk baseline optimization. ${templateSummary}`,
+      'Apply a governed template baseline through execution to align future service growth.',
+      {
+        label: 'Apply baseline template',
+        executionActionType: EXECUTION_ACTIONS.USE_TEMPLATE,
+        target: `${application.provider} baseline template`,
+        impactSummary: 'Apply a standardized template baseline for operational consistency.',
+      },
     );
   }
 
   if (normalizedQuery === 'what changed in the last deployment?') {
     return aiReply(
-      `Last deployment was ${deploymentVersion}, ${application.lastDeployment}. No anomalies were detected at the time of deployment.`,
+      `Latest deployment version is ${deploymentVersion} for ${application.name}.`,
+      `${recentActionSummary} ${unhealthySummary}`,
+      'Run a restart action for the most affected service if elevated failures persist.',
+      {
+        label: 'Restart degraded service',
+        executionActionType: EXECUTION_ACTIONS.RESTART_SERVICE,
+        target: unhealthyDependencies[0] ?? `${application.name} primary dependency`,
+        impactSummary: 'Restart the most affected dependency to stabilize request flow.',
+      },
     );
   }
 
   if (normalizedQuery === 'is the rollback working?') {
     return aiReply(
-      `${application.name} is recovering. Error rate has dropped since rollback. Continue monitoring for the next 15 minutes before closing the incident.`,
+      `${application.name} is recovering after rollback.`,
+      `Error trend is improving, but dependency health still requires verification. ${unhealthySummary}`,
+      'Execute a targeted service restart if any dependency remains degraded after rollback.',
+      {
+        label: 'Restart degraded service',
+        executionActionType: EXECUTION_ACTIONS.RESTART_SERVICE,
+        target: unhealthyDependencies[0] ?? `${application.name} primary dependency`,
+        impactSummary: 'Restart the most affected dependency to stabilize request flow.',
+      },
     );
   }
 
   if (normalizedQuery === 'what should i monitor now?') {
     return aiReply(
-      `Focus on error rate and latency P95. Both should continue trending down. If error rate does not reach normal thresholds within 15 minutes, escalate.`,
+      `Primary indicators are error rate and latency P95 for ${application.name}.`,
+      `These indicators must continue to improve after rollback and any restart action. ${recentActionSummary}`,
+      'Restart the most degraded service if those indicators stall.',
+      {
+        label: 'Restart degraded service',
+        executionActionType: EXECUTION_ACTIONS.RESTART_SERVICE,
+        target: unhealthyDependencies[0] ?? `${application.name} primary dependency`,
+        impactSummary: 'Restart the most affected dependency to stabilize request flow.',
+      },
     );
   }
 
   if (normalizedQuery === 'when can i close this incident?') {
     return aiReply(
-      `Close the incident once error rate returns to below 1% and latency P95 returns to below 300ms for a sustained 10-minute window.`,
+      'Incident closure criteria are measurable and not yet automatic.',
+      'Closure requires sustained recovery with stable dependency health and no active execution backlog.',
+      'Restart any remaining degraded dependency before incident closure validation.',
+      {
+        label: 'Restart degraded service',
+        executionActionType: EXECUTION_ACTIONS.RESTART_SERVICE,
+        target: unhealthyDependencies[0] ?? `${application.name} primary dependency`,
+        impactSummary: 'Restart the most affected dependency to stabilize request flow.',
+      },
     );
   }
 
-  return aiReply('I cannot answer that in this context. Try one of the suggested prompts.');
+  return aiReply(
+    `${application.name} requires a context-grounded decision response.`,
+    `${unhealthySummary} ${templateSummary} ${recentActionSummary}`,
+    'Execute the highest-impact available action: rollback if incident is active, otherwise restart the most degraded service.',
+    application.activeIncident && !didRunRollback
+      ? {
+          label: 'Rollback deployment',
+          executionActionType: EXECUTION_ACTIONS.ROLLBACK_DEPLOYMENT,
+          target: application.name,
+          impactSummary: 'Revert service to previous deployment version.',
+        }
+      : {
+          label: 'Restart degraded service',
+          executionActionType: EXECUTION_ACTIONS.RESTART_SERVICE,
+          target: unhealthyDependencies[0] ?? `${application.name} primary dependency`,
+          impactSummary: 'Restart the most affected dependency to stabilize request flow.',
+        },
+  );
 };
 
 export function ApplicationWorkspaceClient({
@@ -153,11 +296,36 @@ export function ApplicationWorkspaceClient({
   const searchParams = useSearchParams();
   const [isCompanionOpen, setIsCompanionOpen] = useState(false);
   const [queryInput, setQueryInput] = useState('');
-  const [aiResponse, setAiResponse] = useState(aiReply('Select a prompt or ask a supported question.'));
+  const [aiResponse, setAiResponse] = useState(
+    aiReply(
+      application.activeIncident
+        ? `${application.name} has an active incident and requires immediate mitigation.`
+        : `AI companion is ready for a system decision request for ${application.name}.`,
+      application.activeIncident
+        ? 'Incident context indicates elevated operational risk.'
+        : 'Initial state requires baseline standardization before the next change window.',
+      application.activeIncident
+        ? 'Rollback is the fastest governed path to restore known-good behavior.'
+        : 'Applying a governed baseline template establishes a deterministic operating posture.',
+      application.activeIncident
+        ? {
+            label: 'Rollback deployment',
+            executionActionType: EXECUTION_ACTIONS.ROLLBACK_DEPLOYMENT,
+            target: application.name,
+            impactSummary: 'Revert service to previous deployment version.',
+          }
+        : {
+            label: 'Apply baseline template',
+            executionActionType: EXECUTION_ACTIONS.USE_TEMPLATE,
+            target: `${application.provider} baseline template`,
+            impactSummary: 'Apply a standardized template baseline for operational consistency.',
+          },
+    ),
+  );
   const [didRunRollback, setDidRunRollback] = useState(false);
   const [actionFeedback, setActionFeedback] = useState('');
   const [activeTab, setActiveTab] = useState<WorkspaceTab>('Overview');
-  const { requestExecution, templateCreatedServices } = useActionExecution();
+  const { requestExecution, templateCreatedServices, recentActions } = useActionExecution();
 
   const activeMetrics = useMemo(() => {
     if (!logsMetrics) {
@@ -202,9 +370,21 @@ export function ApplicationWorkspaceClient({
 
   useEffect(() => {
     if (didRunRollback) {
-      setAiResponse(aiReply('Rollback is in progress. Use the prompts above to monitor recovery.'));
+      setAiResponse(
+        aiReply(
+          'Rollback execution is active for this application.',
+          'Recent action state indicates rollback has started and dependency health must be verified.',
+          'Use a recovery prompt and execute a targeted restart if degraded dependencies remain.',
+          {
+            label: 'Restart degraded service',
+            executionActionType: EXECUTION_ACTIONS.RESTART_SERVICE,
+            target: unhealthyDependencies[0]?.name ?? `${application.name} primary dependency`,
+            impactSummary: 'Restart the most affected dependency to stabilize request flow.',
+          },
+        ),
+      );
     }
-  }, [didRunRollback]);
+  }, [application.name, didRunRollback, unhealthyDependencies]);
 
   const submitQuery = (query: string) => {
     setAiResponse(
@@ -216,6 +396,8 @@ export function ApplicationWorkspaceClient({
         activeMetrics?.deploymentVersion ?? 'current deployment',
         didRunRollback,
         unhealthyDependencies.map((dependency) => dependency.name),
+        appTemplateServices.length,
+        recentActions[0]?.actionLabel,
       ),
     );
   };
@@ -263,6 +445,25 @@ export function ApplicationWorkspaceClient({
     }
 
     setActionFeedback(`${label} completed for ${application.name}.`);
+  };
+
+  const executeRecommendedAction = (action: InlineAction) => {
+    requestExecution({
+      payload: {
+        actionType: action.executionActionType,
+        target: action.target,
+        appId: application.id,
+        applicationName: application.name,
+        provider: application.provider,
+        environment: currentEnvironment,
+        governanceState: 'approved',
+        impactSummary: action.impactSummary,
+        templateName: action.executionActionType === EXECUTION_ACTIONS.USE_TEMPLATE ? action.target : undefined,
+      },
+      onComplete: (result) => {
+        setActionFeedback(result.message);
+      },
+    });
   };
 
   const applicationInsights = useApplicationInsights({
@@ -552,19 +753,24 @@ Rollback deployment
           </div>
 
           <div className="ai-response-area" aria-live="polite">
-            <p>{aiResponse.message}</p>
-            {aiResponse.action?.primary && (
-              <div className="ai-action-row">
-                <button type="button" className="incident-button" onClick={() => executeAction(aiResponse.action?.primary ?? '')}>
-                  {aiResponse.action.primary}
-                </button>
-                {aiResponse.action.secondary && (
-                  <button type="button" className="incident-button secondary">
-                    {aiResponse.action.secondary}
-                  </button>
-                )}
-              </div>
-            )}
+            <div className="ai-structured-block">
+              <p className="ai-structured-label">Diagnosis</p>
+              <p className="ai-structured-value">{aiResponse.diagnosis}</p>
+            </div>
+            <div className="ai-structured-block">
+              <p className="ai-structured-label">Likely Cause</p>
+              <p className="ai-structured-value">{aiResponse.likelyCause}</p>
+            </div>
+            <div className="ai-structured-block">
+              <p className="ai-structured-label">Recommended Action</p>
+              <p className="ai-structured-value">{aiResponse.recommendedAction}</p>
+              <p className="ai-structured-value ai-structured-value--reason">{aiResponse.recommendedActionReasoning}</p>
+            </div>
+            <div className="ai-action-row">
+              <button type="button" className="incident-button" onClick={() => executeRecommendedAction(aiResponse.action)}>
+                {aiResponse.action.label}
+              </button>
+            </div>
           </div>
 
           <form className="ai-input-row" onSubmit={handleCompanionSubmit}>
