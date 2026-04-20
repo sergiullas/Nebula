@@ -1,48 +1,127 @@
-# AI System Folder
+# AI_SYSTEM — Operating Layer
 
 ## Purpose
 
-This folder contains the operating context and implementation rules for the Cloud Brokerage Portal project.
+This folder defines how the Cloud Brokerage Portal is built and how AI tools and developers must behave.
 
-It exists to reduce context loss, prevent implementation drift, and ensure that both human developers and AI coding tools follow the same project rules before writing code.
+It exists to:
+
+- prevent context loss
+- prevent implementation drift
+- ensure consistent decision-making across the system
+- align architecture, UX, and execution
+
+This is not a feature folder.  
+This is the system operating layer.
+
+---
+
+## Files in this Folder
+
+### AGENTS.md
+
+Defines the implementation contract.
+
+Includes:
+
+- behavior rules for AI and developers
+- workflow (Research → Plan → Implement)
+- scope control
+- system constraints (governance, explainability, execution)
+
+This is the **primary enforcement layer**.
+
+---
+
+### ROADMAP_STATE.md
+
+Defines the current system state.
+
+Includes:
+
+- phase status
+- gaps and risks
+- current priorities
+- next actions
+
+This is the **alignment layer**.
+
+Important:
+
+This file is NOT an implementation spec.  
+It provides context, not instructions.
+
+---
 
 ## Required Reading Order
 
-Before starting any implementation work, read these files in order:
+Before starting any implementation:
 
-1. `README.md`
-2. `AGENTS.md`
-3. `STATE.md`
-4. The active phase or feature specification document
+1. README.md  
+2. AGENTS.md  
+3. ROADMAP_STATE.md  
+4. Active phase or feature specification  
 
-Do not start coding before completing this reading sequence.
+Do not start coding before completing this sequence.
+
+---
 
 ## Required Workflow
 
-All implementation work must follow this workflow:
+All work must follow:
 
-1. Research
-   - Read only the files relevant to the task
-   - Explain the current logic back before proposing changes
+### 1. Research
+- Read only relevant files
+- Explain current behavior before proposing changes
 
-2. Plan
-   - Write a step-by-step implementation plan in markdown
-   - Do not write code yet
+### 2. Plan
+- Write a step-by-step implementation plan in markdown
+- No code at this stage
 
-3. Implement
-   - Only begin coding after the plan is reviewed and approved
+### 3. Implement
+- Begin coding only after approval
+- Follow AGENTS.md rules strictly
 
-## Non-Negotiable Rules
+---
 
-1. AI advises. Humans decide.
-2. Do not expand scope beyond the active phase or task.
-3. Do not invent new product concepts, actions, or flows unless explicitly approved.
-4. Do not hide governance, remove human control, or introduce opaque AI behavior.
-5. Preserve accessibility, explainability, and context visibility.
-6. Use project rules and phase specs as the source of truth.
+## Authority Model
 
-## Notes
+- Feature specifications define implementation details
+- AGENTS.md defines behavior and constraints
+- ROADMAP_STATE.md defines system direction
 
-This folder is the project operating layer.
-It does not replace feature specifications.
-It ensures that implementation stays aligned with the architecture, design philosophy, and current project state.
+If conflicts exist:
+
+1. Specs override implementation details  
+2. AGENTS.md overrides behavior  
+3. ROADMAP_STATE.md guides decisions  
+
+---
+
+## What This Folder Does NOT Do
+
+This folder does NOT:
+
+- define UI design
+- contain feature specs
+- replace phase instructions
+- include implementation code
+
+---
+
+## Operating Principle
+
+AI advises. Humans decide. System executes.
+
+---
+
+## Final Rule
+
+Clarity, governance, and trust take priority over speed.
+
+The system must remain:
+
+- predictable
+- explainable
+- consistent
+- aligned with architecture
