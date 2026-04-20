@@ -1,9 +1,9 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { CloudApplication, CloudTemplate, TemplateGovernanceState, TemplateWorkloadType, TemplateComplexity } from '@/components/types';
+import { CloudApplication, CloudTemplate, TemplateGovernanceState, TemplateWorkloadType } from '@/components/types';
 import { EXECUTION_ACTIONS, useActionExecution } from '@/components/execution';
 
 type TemplatesClientProps = {
@@ -30,12 +30,6 @@ const governanceClass: Record<TemplateGovernanceState, string> = {
   approved: 'gov-approved',
   'requires-approval': 'gov-requires',
   'includes-restricted': 'gov-discouraged',
-};
-
-const complexityLabel: Record<TemplateComplexity, string> = {
-  low: 'Low complexity',
-  medium: 'Medium complexity',
-  high: 'High complexity',
 };
 
 const ALL = 'All';
@@ -166,40 +160,43 @@ function TemplateCard({
 export function TemplatesClient({ templates, application, currentEnvironment }: TemplatesClientProps) {
   const [activeWorkload, setActiveWorkload] = useState<string>(ALL);
   const [activeGovernance, setActiveGovernance] = useState<string>(ALL);
-  const [activeProvider, setActiveProvider] = useState<string>(application?.provider ?? ALL);
-  const [activeComplexity, setActiveComplexity] = useState<string>(ALL);
+  const [filtersExpanded, setFiltersExpanded] = useState(false);
   const [showAll, setShowAll] = useState(false);
 
-  useEffect(() => {
-    setActiveProvider(application?.provider ?? ALL);
-  }, [application?.id, application?.provider]);
-
   const allWorkloads = Array.from(new Set(templates.map((t) => t.type)));
-  const allProviders = Array.from(new Set(templates.map((t) => t.provider)));
   const allGovernance: TemplateGovernanceState[] = ['approved', 'requires-approval', 'includes-restricted'];
-  const allComplexities: TemplateComplexity[] = ['low', 'medium', 'high'];
 
   const filtered = useMemo(
     () =>
       templates.filter((t) => {
         if (activeWorkload !== ALL && t.type !== activeWorkload) return false;
         if (activeGovernance !== ALL && t.governanceState !== activeGovernance) return false;
-        if (activeProvider !== ALL && t.provider !== activeProvider) return false;
-        if (activeComplexity !== ALL && t.complexity !== activeComplexity) return false;
+        if (application?.provider && t.provider !== application.provider) return false;
         return true;
       }),
-    [activeComplexity, activeGovernance, activeProvider, activeWorkload, templates],
+    [activeGovernance, activeWorkload, application?.provider, templates],
   );
 
-  const hasActiveFilter =
-    activeWorkload !== ALL || activeGovernance !== ALL || activeProvider !== ALL || activeComplexity !== ALL;
+  const hasActiveFilter = activeWorkload !== ALL || activeGovernance !== ALL;
 
-  const prioritizedTemplates = application
-    ? [...filtered].sort((a, b) => Number(b.provider === application.provider) - Number(a.provider === application.provider))
-    : filtered;
+  const prioritizedTemplates = [...filtered].sort((a, b) => {
+    const aProviderMatch = Number(application?.provider ? a.provider === application.provider : true);
+    const bProviderMatch = Number(application?.provider ? b.provider === application.provider : true);
+    const governanceScore = (state: TemplateGovernanceState) => {
+      if (state === 'approved') return 3;
+      if (state === 'requires-approval') return 2;
+      return 1;
+    };
 
-  const primaryTemplates = prioritizedTemplates.slice(0, 3);
-  const remainingTemplates = prioritizedTemplates.slice(3);
+    const scoreA = aProviderMatch * 100 + governanceScore(a.governanceState) * 10 + a.aiInsight.confidence;
+    const scoreB = bProviderMatch * 100 + governanceScore(b.governanceState) * 10 + b.aiInsight.confidence;
+    return scoreB - scoreA;
+  });
+
+  const recommendedTemplate = prioritizedTemplates[0];
+  const remainingRecommended = prioritizedTemplates.slice(1);
+  const primaryTemplates = remainingRecommended.slice(0, 3);
+  const remainingTemplates = remainingRecommended.slice(3);
 
   return (
     <div className="templates-page">
@@ -223,51 +220,51 @@ export function TemplatesClient({ templates, application, currentEnvironment }: 
 
       <div className="templates-layer-note">
         <p className="templates-layer-note-text">
-          <strong>Decision order:</strong> Template → governed execution → services appear in your application workspace with lineage.
+          <strong>Recommended path:</strong><br />
+          1. Choose a template<br />
+          2. Confirm configuration<br />
+          3. Services are created automatically
         </p>
       </div>
 
       <div className="templates-filters">
-        <div className="templates-filter-group">
-          <span className="templates-filter-label">Workload</span>
-          <div className="templates-filter-pills">
-            <button type="button" className={`tab-pill ${activeWorkload === ALL ? 'active' : ''}`} onClick={() => setActiveWorkload(ALL)}>All</button>
-            {allWorkloads.map((w) => (
-              <button key={w} type="button" className={`tab-pill ${activeWorkload === w ? 'active' : ''}`} onClick={() => setActiveWorkload(w)}>
-                {workloadLabels[w]}
-              </button>
-            ))}
-          </div>
-        </div>
+        <button
+          type="button"
+          className="templates-refine-toggle"
+          onClick={() => setFiltersExpanded((expanded) => !expanded)}
+          aria-expanded={filtersExpanded}
+          aria-controls="template-refine-selection"
+        >
+          Refine selection {filtersExpanded ? '▾' : '▸'}
+        </button>
 
-        <div className="templates-filter-group">
-          <span className="templates-filter-label">Governance</span>
-          <div className="templates-filter-pills">
-            <button type="button" className={`tab-pill ${activeGovernance === ALL ? 'active' : ''}`} onClick={() => setActiveGovernance(ALL)}>All</button>
-            {allGovernance.filter((g) => templates.some((t) => t.governanceState === g)).map((g) => (
-              <button key={g} type="button" className={`tab-pill ${activeGovernance === g ? 'active' : ''}`} onClick={() => setActiveGovernance(g)}>
-                {governanceLabel[g]}
-              </button>
-            ))}
-          </div>
-        </div>
+        {filtersExpanded && (
+          <div id="template-refine-selection" className="templates-refine-panel">
+            <div className="templates-filter-group">
+              <span className="templates-filter-label">Workload</span>
+              <div className="templates-filter-pills">
+                <button type="button" className={`tab-pill ${activeWorkload === ALL ? 'active' : ''}`} onClick={() => setActiveWorkload(ALL)}>All</button>
+                {allWorkloads.map((w) => (
+                  <button key={w} type="button" className={`tab-pill ${activeWorkload === w ? 'active' : ''}`} onClick={() => setActiveWorkload(w)}>
+                    {workloadLabels[w]}
+                  </button>
+                ))}
+              </div>
+            </div>
 
-        <div className="templates-filter-group">
-          <span className="templates-filter-label">Provider · Complexity</span>
-          <div className="templates-filter-pills">
-            <button type="button" className={`tab-pill ${activeProvider === ALL ? 'active' : ''}`} onClick={() => setActiveProvider(ALL)}>All providers</button>
-            {allProviders.map((p) => (
-              <button key={p} type="button" className={`tab-pill ${activeProvider === p ? 'active' : ''}`} onClick={() => setActiveProvider(activeProvider === p ? ALL : p)}>
-                {p}
-              </button>
-            ))}
-            {allComplexities.filter((c) => templates.some((t) => t.complexity === c)).map((c) => (
-              <button key={c} type="button" className={`tab-pill ${activeComplexity === c ? 'active' : ''}`} onClick={() => setActiveComplexity(activeComplexity === c ? ALL : c)}>
-                {complexityLabel[c]}
-              </button>
-            ))}
+            <div className="templates-filter-group">
+              <span className="templates-filter-label">Governance</span>
+              <div className="templates-filter-pills">
+                <button type="button" className={`tab-pill ${activeGovernance === ALL ? 'active' : ''}`} onClick={() => setActiveGovernance(ALL)}>All</button>
+                {allGovernance.filter((g) => templates.some((t) => t.governanceState === g)).map((g) => (
+                  <button key={g} type="button" className={`tab-pill ${activeGovernance === g ? 'active' : ''}`} onClick={() => setActiveGovernance(g)}>
+                    {governanceLabel[g]}
+                  </button>
+                ))}
+              </div>
+            </div>
           </div>
-        </div>
+        )}
       </div>
 
       {filtered.length === 0 ? (
@@ -279,8 +276,6 @@ export function TemplatesClient({ templates, application, currentEnvironment }: 
             onClick={() => {
               setActiveWorkload(ALL);
               setActiveGovernance(ALL);
-              setActiveProvider(application?.provider ?? ALL);
-              setActiveComplexity(ALL);
             }}
           >
             Clear filters
@@ -288,10 +283,26 @@ export function TemplatesClient({ templates, application, currentEnvironment }: 
         </div>
       ) : (
         <>
+          {recommendedTemplate && (
+            <section className="templates-section">
+              <div className="templates-section-header">
+                <p className="templates-section-label">Recommended for this application</p>
+                <p className="templates-section-hint">{toSentence(recommendedTemplate.aiInsight.fit)}</p>
+              </div>
+              <div className="templates-grid">
+                <TemplateCard
+                  template={recommendedTemplate}
+                  application={application}
+                  currentEnvironment={currentEnvironment}
+                />
+              </div>
+            </section>
+          )}
+
           <section className="templates-section">
             <div className="templates-section-header">
               <p className="templates-section-label">
-                {hasActiveFilter ? `Matching templates (${filtered.length})` : 'Recommended starting templates'}
+                {hasActiveFilter ? `Matching templates (${remainingRecommended.length})` : 'More templates'}
               </p>
               {!hasActiveFilter && application && (
                 <p className="templates-section-hint">
