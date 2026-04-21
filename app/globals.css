@@ -1804,19 +1804,136 @@ textarea:focus-visible {
 }
 
 .home-focus-block {
-  border-color: var(--border-info);
+  border-width: var(--border-width-focus);
+  border-color: var(--border-strong);
   background: var(--bg-info);
+  padding: var(--space-7);
 }
 
 .home-focus-block .detail-impact-note {
-  margin: 0;
-  line-height: 1.4;
+  margin: 0 0 var(--space-3);
+  line-height: var(--leading-normal);
+}
+
+.home-section {
+  padding: var(--space-6);
+  border-bottom: 0;
+}
+
+.home-section + .home-section {
+  border-top: var(--border-width) solid var(--border-default);
+  margin-top: var(--space-5);
+  padding-top: var(--space-8);
+}
+
+.home-section--focus {
+  padding-top: var(--space-7);
+  padding-bottom: var(--space-7);
+}
+
+.home-section .templates-section-header {
+  margin-bottom: var(--space-2);
+}
+
+.home-section .templates-section-label {
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+  letter-spacing: 0.03em;
 }
 
 .home-focus-link {
   font-size: var(--text-sm);
-  color: var(--text-info);
+  color: var(--text-secondary);
+  text-decoration: none;
+}
+
+.home-focus-link:hover {
+  color: var(--text-primary);
   text-decoration: underline;
+}
+
+.home-focus-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin-top: var(--space-5);
+}
+
+.home-focus-primary-cta {
+  padding: var(--space-3) var(--space-4);
+}
+
+.home-application-row {
+  background: transparent;
+  border-color: var(--border-default);
+  padding: var(--space-2) var(--space-3);
+}
+
+.home-application-row:hover {
+  border-color: var(--border-medium);
+  background: var(--bg-primary);
+}
+
+.home-application-row__meta {
+  gap: var(--space-2);
+  align-items: center;
+}
+
+.home-application-row .pill {
+  font-size: var(--text-xs);
+  padding: var(--space-1) var(--space-2);
+  font-weight: var(--weight-regular);
+}
+
+.home-application-row .pill.gov-approved {
+  background: var(--bg-success);
+  color: var(--text-success);
+  border-color: var(--border-success);
+}
+
+.home-application-row .pill.gov-requires {
+  background: var(--bg-warning);
+  color: var(--text-warning);
+  border-color: var(--border-warning);
+}
+
+.home-application-row .pill.gov-discouraged {
+  background: var(--bg-danger);
+  color: var(--incident-text);
+  border-color: var(--border-danger);
+}
+
+.home-inline-link {
+  color: var(--text-secondary);
+  text-decoration: none;
+  font-size: var(--text-sm);
+}
+
+.home-inline-link:hover {
+  color: var(--text-primary);
+  text-decoration: underline;
+}
+
+.home-activity-row,
+.home-system-row {
+  background: transparent;
+  border-color: var(--border-default);
+  padding: var(--space-3);
+}
+
+.home-supporting-insights {
+  margin-top: var(--space-4);
+}
+
+.home-supporting-insight-row {
+  background: transparent;
+  border-color: var(--border-default);
+  padding: var(--space-3);
+}
+
+.home-section--systems .templates-section-label,
+.home-section--systems .templates-section-hint {
+  color: var(--text-tertiary);
 }
 
 .templates-grid {

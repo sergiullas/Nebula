@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import { AppShell } from '@/components/AppShell';
 import { EXECUTION_ACTION_LABELS, EXECUTION_ACTIONS, ExecutionActionType, useActionExecution } from '@/components/execution';
 import { mockApplications } from '@/components/data';
@@ -84,13 +84,149 @@ const getSuggestedImprovements = (): SuggestedInsight[] => {
     .sort((a, b) => a.priority - b.priority);
 };
 
+type FocusBlockProps = {
+  focusInsight?: SuggestedInsight;
+  onExecuteRecommendedAction: (insight: SuggestedInsight) => void;
+};
+
+function FocusBlock({ focusInsight, onExecuteRecommendedAction }: FocusBlockProps) {
+  return (
+    <section className="templates-section home-section home-section--focus">
+      <div className="templates-section-header">
+        <p className="templates-section-label">Focus</p>
+      </div>
+      {focusInsight ? (
+        <article className="detail-why-block home-focus-block">
+          <p className="detail-impact-note"><strong>Diagnosis:</strong> {focusInsight.diagnosis}</p>
+          <p className="detail-impact-note"><strong>Likely Cause:</strong> {focusInsight.likelyCause}</p>
+          <p className="detail-impact-note"><strong>Recommended Action:</strong> {focusInsight.recommendedAction}</p>
+          <div className="home-focus-actions">
+            <button type="button" className="incident-button home-focus-primary-cta" onClick={() => onExecuteRecommendedAction(focusInsight)}>
+              {EXECUTION_ACTION_LABELS[focusInsight.actionType]}
+            </button>
+            <Link href={focusInsight.href} className="home-focus-link">
+              View details
+            </Link>
+          </div>
+        </article>
+      ) : (
+        <p className="placeholder muted">No active recommendation at this time.</p>
+      )}
+    </section>
+  );
+}
+
+function ApplicationsSection() {
+  return (
+    <section className="templates-section home-section home-section--applications">
+      <div className="templates-section-header">
+        <p className="templates-section-label">My Applications</p>
+      </div>
+      <div className="dependency-list">
+        {mockApplications.map((app) => {
+          const statusLabel = app.health === 'warning' ? 'Degraded' : app.health === 'healthy' ? 'Healthy' : 'Critical';
+          return (
+            <article key={app.id} className="dependency-row home-application-row">
+              <div className="dependency-main">
+                <p className="dependency-row__name">{app.name}</p>
+                <p className="dependency-row__detail">Status: {statusLabel}</p>
+                <p className="dependency-row__detail">Key signal: {app.activeIncident ? 'Active incident' : app.aiSummary ?? 'No active signal'}</p>
+              </div>
+              <div className="dependency-row__badges home-application-row__meta">
+                <span className={`pill ${app.health === 'healthy' ? 'gov-approved' : app.health === 'warning' ? 'gov-requires' : 'gov-discouraged'}`}>
+                  {statusLabel}
+                </span>
+                <Link href={`/app/${app.id}`} className="home-inline-link">
+                  Open
+                </Link>
+              </div>
+            </article>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+
+type ActivitySectionProps = {
+  recentActions: ReturnType<typeof useActionExecution>['recentActions'];
+  toConciseActivityLabel: (actionLabel: string, target: string) => string;
+};
+
+function ActivitySection({ recentActions, toConciseActivityLabel }: ActivitySectionProps) {
+  const recent = recentActions.slice(0, 5);
+
+  return (
+    <section className="templates-section home-section">
+      <div className="templates-section-header">
+        <p className="templates-section-label">Activity</p>
+      </div>
+      {recent.length === 0 ? (
+        <p className="placeholder muted">
+          No recent actions. <Link href="/templates" className="home-inline-link">Use a template</Link>,{' '}
+          <Link href={`/app/${mockApplications[0]?.id ?? ''}/catalog`} className="home-inline-link">add a service</Link>, or{' '}
+          <Link href="/catalog" className="home-inline-link">open catalog</Link>.
+        </p>
+      ) : (
+        <div className="dependency-list">
+          {recent.map((entry) => (
+            <article key={`${entry.timestamp}-${entry.actionType}-${entry.target}`} className="dependency-row home-activity-row">
+              <div className="dependency-main">
+                <p className="dependency-row__name">{toConciseActivityLabel(entry.actionLabel, entry.target)}</p>
+                <p className="dependency-row__detail">{entry.status === 'success' ? 'Success' : 'Failure'} · {new Date(entry.timestamp).toLocaleString()}</p>
+              </div>
+            </article>
+          ))}
+        </div>
+      )}
+    </section>
+  );
+}
+
+type SystemsSectionProps = {
+  systems: Array<[string, string[]]>;
+  additionalInsights: SuggestedInsight[];
+};
+
+function SystemsSection({ systems, additionalInsights }: SystemsSectionProps) {
+  return (
+    <section className="templates-section home-section home-section--systems">
+      <div className="templates-section-header">
+        <p className="templates-section-label">Systems / Supporting Context</p>
+      </div>
+      <div className="dependency-list">
+        {systems.map(([systemName, apps]) => (
+          <article key={systemName} className="dependency-row home-system-row">
+            <div className="dependency-main">
+              <p className="dependency-row__name">{systemName}</p>
+              <p className="dependency-row__detail">Applications: {apps.join(', ')}</p>
+            </div>
+          </article>
+        ))}
+      </div>
+      {additionalInsights.length > 0 && (
+        <div className="home-supporting-insights">
+          <p className="templates-section-hint">Additional AI context</p>
+          <div className="dependency-list">
+            {additionalInsights.map((insight) => (
+              <article key={insight.id} className="detail-why-block home-supporting-insight-row">
+                <p className="detail-impact-note"><strong>Diagnosis:</strong> {insight.diagnosis}</p>
+                <p className="detail-impact-note"><strong>Likely Cause:</strong> {insight.likelyCause}</p>
+                <p className="detail-impact-note"><strong>Recommended Action:</strong> {insight.recommendedAction}</p>
+              </article>
+            ))}
+          </div>
+        </div>
+      )}
+    </section>
+  );
+}
+
 export function HomeClient() {
   const { recentActions, requestExecution } = useActionExecution();
-  const [showAdditionalInsights, setShowAdditionalInsights] = useState(false);
   const suggestions = useMemo(() => getSuggestedImprovements(), []);
   const focusInsight = suggestions[0];
   const additionalInsights = suggestions.slice(1);
-  const recent = recentActions.slice(0, 5);
 
   const systems = Object.entries(
     mockApplications.reduce<Record<string, string[]>>((acc, app) => {
@@ -140,110 +276,10 @@ export function HomeClient() {
           </div>
         </header>
 
-        <section className="templates-section">
-          <div className="templates-section-header">
-            <p className="templates-section-label">Focus</p>
-          </div>
-          {focusInsight ? (
-            <article className="detail-why-block home-focus-block">
-              <p className="detail-impact-note"><strong>Diagnosis:</strong> {focusInsight.diagnosis}</p>
-              <p className="detail-impact-note"><strong>Likely Cause:</strong> {focusInsight.likelyCause}</p>
-              <p className="detail-impact-note"><strong>Recommended Action:</strong> {focusInsight.recommendedAction}</p>
-              <div className="toggle-row" style={{ marginTop: 8 }}>
-                <button type="button" className="incident-button" onClick={() => executeRecommendedAction(focusInsight)}>
-                  {EXECUTION_ACTION_LABELS[focusInsight.actionType]}
-                </button>
-                <Link href={focusInsight.href} className="home-focus-link">
-                  View details
-                </Link>
-              </div>
-            </article>
-          ) : (
-            <p className="placeholder muted">No active recommendation at this time.</p>
-          )}
-        </section>
-
-        <section className="templates-section">
-          <div className="templates-section-header">
-            <p className="templates-section-label">My Applications</p>
-          </div>
-          <div className="dependency-list">
-            {mockApplications.map((app) => (
-              <article key={app.id} className="dependency-row">
-                <div className="dependency-main">
-                  <p className="dependency-row__name">{app.name}</p>
-                  <p className="dependency-row__detail">Status: {app.health === 'warning' ? 'Degraded' : app.health === 'healthy' ? 'Healthy' : 'Critical'} · Last deployment: {app.lastDeployment}</p>
-                  <p className="dependency-row__detail">Key signal: {app.activeIncident ? 'Active incident' : app.aiSummary ?? 'No active signal'}</p>
-                </div>
-                <div className="dependency-row__badges">
-                  <span className={`pill ${app.health === 'healthy' ? 'gov-approved' : app.health === 'warning' ? 'gov-requires' : 'gov-discouraged'}`}>
-                    {app.health}
-                  </span>
-                  <Link href={`/app/${app.id}`} className="incident-button secondary" style={{ textDecoration: 'none' }}>
-                    Open
-                  </Link>
-                </div>
-              </article>
-            ))}
-          </div>
-        </section>
-
-        <section className="templates-section">
-          <div className="templates-section-header">
-            <p className="templates-section-label">Activity</p>
-          </div>
-          {recent.length === 0 ? (
-            <p className="placeholder muted">No recent actions. Run a template or action to populate this section.</p>
-          ) : (
-            <div className="dependency-list">
-              {recent.map((entry) => (
-                <article key={`${entry.timestamp}-${entry.actionType}-${entry.target}`} className="dependency-row">
-                  <div className="dependency-main">
-                    <p className="dependency-row__name">{toConciseActivityLabel(entry.actionLabel, entry.target)}</p>
-                    <p className="dependency-row__detail">{entry.status === 'success' ? 'Success' : 'Failure'} · {new Date(entry.timestamp).toLocaleString()}</p>
-                  </div>
-                </article>
-              ))}
-            </div>
-          )}
-        </section>
-
-        <section className="templates-section">
-          <div className="templates-section-header">
-            <p className="templates-section-label">Additional AI Insights</p>
-            <button type="button" className="templates-show-more" onClick={() => setShowAdditionalInsights((value) => !value)}>
-              {additionalInsights.length} additional insights {showAdditionalInsights ? '▾' : '▸'}
-            </button>
-          </div>
-          {showAdditionalInsights && additionalInsights.length > 0 && (
-            <div className="dependency-list">
-              {additionalInsights.map((insight) => (
-                <article key={insight.id} className="detail-why-block">
-                  <p className="detail-impact-note"><strong>Diagnosis:</strong> {insight.diagnosis}</p>
-                  <p className="detail-impact-note"><strong>Likely Cause:</strong> {insight.likelyCause}</p>
-                  <p className="detail-impact-note"><strong>Recommended Action:</strong> {insight.recommendedAction}</p>
-                </article>
-              ))}
-            </div>
-          )}
-          {additionalInsights.length === 0 && <p className="placeholder muted">No additional insights.</p>}
-        </section>
-
-        <section className="templates-section">
-          <div className="templates-section-header">
-            <p className="templates-section-label">Systems</p>
-          </div>
-          <div className="dependency-list">
-            {systems.map(([systemName, apps]) => (
-              <article key={systemName} className="dependency-row">
-                <div className="dependency-main">
-                  <p className="dependency-row__name">{systemName}</p>
-                  <p className="dependency-row__detail">Applications: {apps.join(', ')}</p>
-                </div>
-              </article>
-            ))}
-          </div>
-        </section>
+        <FocusBlock focusInsight={focusInsight} onExecuteRecommendedAction={executeRecommendedAction} />
+        <ApplicationsSection />
+        <ActivitySection recentActions={recentActions} toConciseActivityLabel={toConciseActivityLabel} />
+        <SystemsSection systems={systems} additionalInsights={additionalInsights} />
       </div>
     </AppShell>
   );
