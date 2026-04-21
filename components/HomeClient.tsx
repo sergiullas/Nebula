@@ -90,16 +90,36 @@ type FocusBlockProps = {
 };
 
 function FocusBlock({ focusInsight, onExecuteRecommendedAction }: FocusBlockProps) {
+  const focusToneClassName = focusInsight
+    ? focusInsight.priority === 1
+      ? 'home-focus-block--critical'
+      : focusInsight.priority === 2
+        ? 'home-focus-block--warning'
+        : 'home-focus-block--healthy'
+    : '';
+
   return (
     <section className="templates-section home-section home-section--focus">
       <div className="templates-section-header">
         <p className="templates-section-label">Focus</p>
       </div>
       {focusInsight ? (
-        <article className="detail-why-block home-focus-block">
-          <p className="detail-impact-note"><strong>Diagnosis:</strong> {focusInsight.diagnosis}</p>
-          <p className="detail-impact-note"><strong>Likely Cause:</strong> {focusInsight.likelyCause}</p>
-          <p className="detail-impact-note"><strong>Recommended Action:</strong> {focusInsight.recommendedAction}</p>
+        <article className={`detail-why-block home-focus-block ${focusToneClassName}`}>
+          <p className="home-focus-row">
+            <span className="material-symbols-outlined home-focus-row__icon" aria-hidden>error</span>
+            <span className="home-focus-row__label">Diagnosis:</span>
+            <span className="home-focus-row__value">{focusInsight.diagnosis}</span>
+          </p>
+          <p className="home-focus-row">
+            <span className="material-symbols-outlined home-focus-row__icon" aria-hidden>analytics</span>
+            <span className="home-focus-row__label">Likely Cause:</span>
+            <span className="home-focus-row__value">{focusInsight.likelyCause}</span>
+          </p>
+          <p className="home-focus-row">
+            <span className="material-symbols-outlined home-focus-row__icon" aria-hidden>play_circle</span>
+            <span className="home-focus-row__label">Recommended Action:</span>
+            <span className="home-focus-row__value">{focusInsight.recommendedAction}</span>
+          </p>
           <div className="home-focus-actions">
             <button type="button" className="incident-button home-focus-primary-cta" onClick={() => onExecuteRecommendedAction(focusInsight)}>
               {EXECUTION_ACTION_LABELS[focusInsight.actionType]}
@@ -110,7 +130,7 @@ function FocusBlock({ focusInsight, onExecuteRecommendedAction }: FocusBlockProp
           </div>
         </article>
       ) : (
-        <p className="placeholder muted">No active recommendation at this time.</p>
+        <p className="placeholder muted home-focus-empty">No active recommendation at this time.</p>
       )}
     </section>
   );
@@ -122,11 +142,11 @@ function ApplicationsSection() {
       <div className="templates-section-header">
         <p className="templates-section-label">My Applications</p>
       </div>
-      <div className="dependency-list">
+      <div className="dependency-list home-application-list">
         {mockApplications.map((app) => {
           const statusLabel = app.health === 'warning' ? 'Degraded' : app.health === 'healthy' ? 'Healthy' : 'Critical';
           return (
-            <article key={app.id} className="dependency-row home-application-row">
+            <Link key={app.id} href={`/app/${app.id}`} className="dependency-row home-application-row home-application-card-link">
               <div className="dependency-main">
                 <p className="dependency-row__name">{app.name}</p>
                 <p className="dependency-row__detail">Status: {statusLabel}</p>
@@ -136,11 +156,8 @@ function ApplicationsSection() {
                 <span className={`pill ${app.health === 'healthy' ? 'gov-approved' : app.health === 'warning' ? 'gov-requires' : 'gov-discouraged'}`}>
                   {statusLabel}
                 </span>
-                <Link href={`/app/${app.id}`} className="home-inline-link">
-                  Open
-                </Link>
               </div>
-            </article>
+            </Link>
           );
         })}
       </div>
@@ -162,13 +179,13 @@ function ActivitySection({ recentActions, toConciseActivityLabel }: ActivitySect
         <p className="templates-section-label">Activity</p>
       </div>
       {recent.length === 0 ? (
-        <p className="placeholder muted">
+        <p className="placeholder muted home-activity-empty">
           No recent actions. <Link href="/templates" className="home-inline-link">Use a template</Link>,{' '}
           <Link href={`/app/${mockApplications[0]?.id ?? ''}/catalog`} className="home-inline-link">add a service</Link>, or{' '}
           <Link href="/catalog" className="home-inline-link">open catalog</Link>.
         </p>
       ) : (
-        <div className="dependency-list">
+        <div className="dependency-list home-activity-list">
           {recent.map((entry) => (
             <article key={`${entry.timestamp}-${entry.actionType}-${entry.target}`} className="dependency-row home-activity-row">
               <div className="dependency-main">
@@ -268,11 +285,11 @@ export function HomeClient() {
 
   return (
     <AppShell currentPath="/">
-      <div className="catalog-page">
+      <div className="catalog-page home-page-modern">
         <header className="catalog-header">
           <div className="catalog-header-left">
-            <h1 className="catalog-title">Home</h1>
-            <p className="catalog-subtitle">Decision surface: identify one action first, then review system context.</p>
+            <h1 className="catalog-title home-page-title">Home</h1>
+            <p className="catalog-subtitle home-page-subtitle">Decision surface: identify one action first, then review system context.</p>
           </div>
         </header>
 
