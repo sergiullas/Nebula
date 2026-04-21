@@ -110,7 +110,7 @@ function FocusBlock({ focusInsight, onExecuteRecommendedAction }: FocusBlockProp
           </div>
         </article>
       ) : (
-        <p className="placeholder muted">No active recommendation at this time.</p>
+        <p className="placeholder muted home-activity-empty">No active recommendation at this time.</p>
       )}
     </section>
   );
@@ -122,7 +122,7 @@ function ApplicationsSection() {
       <div className="templates-section-header">
         <p className="templates-section-label">My Applications</p>
       </div>
-      <div className="dependency-list">
+      <div className="dependency-list home-application-list">
         {mockApplications.map((app) => {
           const statusLabel = app.health === 'warning' ? 'Degraded' : app.health === 'healthy' ? 'Healthy' : 'Critical';
           return (
@@ -162,13 +162,13 @@ function ActivitySection({ recentActions, toConciseActivityLabel }: ActivitySect
         <p className="templates-section-label">Activity</p>
       </div>
       {recent.length === 0 ? (
-        <p className="placeholder muted">
+        <p className="placeholder muted home-activity-empty">
           No recent actions. <Link href="/templates" className="home-inline-link">Use a template</Link>,{' '}
           <Link href={`/app/${mockApplications[0]?.id ?? ''}/catalog`} className="home-inline-link">add a service</Link>, or{' '}
           <Link href="/catalog" className="home-inline-link">open catalog</Link>.
         </p>
       ) : (
-        <div className="dependency-list">
+        <div className="dependency-list home-activity-list">
           {recent.map((entry) => (
             <article key={`${entry.timestamp}-${entry.actionType}-${entry.target}`} className="dependency-row home-activity-row">
               <div className="dependency-main">
@@ -268,11 +268,11 @@ export function HomeClient() {
 
   return (
     <AppShell currentPath="/">
-      <div className="catalog-page">
+      <div className="catalog-page home-page-modern">
         <header className="catalog-header">
           <div className="catalog-header-left">
-            <h1 className="catalog-title">Home</h1>
-            <p className="catalog-subtitle">Decision surface: identify one action first, then review system context.</p>
+            <h1 className="catalog-title home-page-title">Home</h1>
+            <p className="catalog-subtitle home-page-subtitle">Decision surface: identify one action first, then review system context.</p>
           </div>
         </header>
 
