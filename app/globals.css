@@ -1914,6 +1914,11 @@ textarea:focus-visible {
   box-shadow: 0 8px 20px rgba(15, 23, 42, 0.1);
 }
 
+.home-application-card-link {
+  text-decoration: none;
+  color: inherit;
+}
+
 .home-application-row__meta {
   gap: var(--space-2);
   align-items: center;

@@ -146,7 +146,7 @@ function ApplicationsSection() {
         {mockApplications.map((app) => {
           const statusLabel = app.health === 'warning' ? 'Degraded' : app.health === 'healthy' ? 'Healthy' : 'Critical';
           return (
-            <article key={app.id} className="dependency-row home-application-row">
+            <Link key={app.id} href={`/app/${app.id}`} className="dependency-row home-application-row home-application-card-link">
               <div className="dependency-main">
                 <p className="dependency-row__name">{app.name}</p>
                 <p className="dependency-row__detail">Status: {statusLabel}</p>
@@ -156,11 +156,8 @@ function ApplicationsSection() {
                 <span className={`pill ${app.health === 'healthy' ? 'gov-approved' : app.health === 'warning' ? 'gov-requires' : 'gov-discouraged'}`}>
                   {statusLabel}
                 </span>
-                <Link href={`/app/${app.id}`} className="home-inline-link">
-                  Open
-                </Link>
               </div>
-            </article>
+            </Link>
           );
         })}
       </div>
