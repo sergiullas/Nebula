@@ -90,16 +90,36 @@ type FocusBlockProps = {
 };
 
 function FocusBlock({ focusInsight, onExecuteRecommendedAction }: FocusBlockProps) {
+  const focusToneClassName = focusInsight
+    ? focusInsight.priority === 1
+      ? 'home-focus-block--critical'
+      : focusInsight.priority === 2
+        ? 'home-focus-block--warning'
+        : 'home-focus-block--healthy'
+    : '';
+
   return (
     <section className="templates-section home-section home-section--focus">
       <div className="templates-section-header">
         <p className="templates-section-label">Focus</p>
       </div>
       {focusInsight ? (
-        <article className="detail-why-block home-focus-block">
-          <p className="detail-impact-note"><strong>Diagnosis:</strong> {focusInsight.diagnosis}</p>
-          <p className="detail-impact-note"><strong>Likely Cause:</strong> {focusInsight.likelyCause}</p>
-          <p className="detail-impact-note"><strong>Recommended Action:</strong> {focusInsight.recommendedAction}</p>
+        <article className={`detail-why-block home-focus-block ${focusToneClassName}`}>
+          <p className="home-focus-row">
+            <span className="material-symbols-outlined home-focus-row__icon" aria-hidden>error</span>
+            <span className="home-focus-row__label">Diagnosis:</span>
+            <span className="home-focus-row__value">{focusInsight.diagnosis}</span>
+          </p>
+          <p className="home-focus-row">
+            <span className="material-symbols-outlined home-focus-row__icon" aria-hidden>analytics</span>
+            <span className="home-focus-row__label">Likely Cause:</span>
+            <span className="home-focus-row__value">{focusInsight.likelyCause}</span>
+          </p>
+          <p className="home-focus-row">
+            <span className="material-symbols-outlined home-focus-row__icon" aria-hidden>play_circle</span>
+            <span className="home-focus-row__label">Recommended Action:</span>
+            <span className="home-focus-row__value">{focusInsight.recommendedAction}</span>
+          </p>
           <div className="home-focus-actions">
             <button type="button" className="incident-button home-focus-primary-cta" onClick={() => onExecuteRecommendedAction(focusInsight)}>
               {EXECUTION_ACTION_LABELS[focusInsight.actionType]}
@@ -110,7 +130,7 @@ function FocusBlock({ focusInsight, onExecuteRecommendedAction }: FocusBlockProp
           </div>
         </article>
       ) : (
-        <p className="placeholder muted home-activity-empty">No active recommendation at this time.</p>
+        <p className="placeholder muted home-focus-empty">No active recommendation at this time.</p>
       )}
     </section>
   );
